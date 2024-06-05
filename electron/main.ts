@@ -81,7 +81,7 @@ function createTray(init = 0) {
 		console.log("Tray already created!");
 		return
 	}
-	tray = new Tray(path.join(process.env.VITE_PUBLIC, 'electron-vite.png'));
+	tray = new Tray(path.join(process.env.VITE_PUBLIC,  init === 0 ? 'tray-icon-start.png' : 'tray-icon-stop.png'));
 	const startItem = {
 		label: 'Start Record',
 		click: function () {
@@ -108,7 +108,7 @@ function createTray(init = 0) {
 		}
 	]);
 
-	tray.setToolTip('AV Craft');
+	tray.setToolTip('AV CRAFT');
 	tray.setContextMenu(contextMenu);
 }
 
