@@ -1,0 +1,27 @@
+body, html {
+	height: 100%;
+	margin: 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	/* background-color: rgba(0, 0, 0, .05);  */
+	color: white;
+	font-size: 40px;
+}
+
+.countdown {
+	font-size: 40px;
+	color: white;
+	border-radius: 50%;
+	width: 100px;
+	height: 100px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: #1e80ff;
+	cursor: pointer;
+}
+
+.countdown:hover {
+	filter: drop-shadow(0 0 2em #646cffaa);
+}

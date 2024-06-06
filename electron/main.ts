@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu } from 'electron'
+import { app, BrowserWindow, Tray, Menu, ipcMain } from 'electron'
 // import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -28,6 +28,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 let win: BrowserWindow | null
 let tray: Tray | null; // 全局变量来持有 Tray 实例
+let maskWin: BrowserWindow | null; // 全局变量来持有 倒计时浮窗 实例
 
 
 function createWindow() {
@@ -52,8 +53,6 @@ function createWindow() {
 		win.loadFile(path.join(RENDERER_DIST, 'index.html'))
 	}
 
-	createTray()
-
 }
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -63,6 +62,7 @@ app.on('window-all-closed', () => {
 	if (process.platform !== 'darwin') {
 		app.quit()
 		win = null
+		tray = null
 	}
 })
 
@@ -70,12 +70,16 @@ app.on('activate', () => {
 	// On OS X it's common to re-create a window in the app when the
 	// dock icon is clicked and there are no other windows open.
 	if (BrowserWindow.getAllWindows().length === 0) {
-		createWindow()
+		false && createWindow()
 	}
 
 })
 
-
+/**
+ * 系统托盘
+ * @param init 
+ * @returns 
+ */
 function createTray(init = 0) {
 	if (tray) {
 		console.log("Tray already created!");
@@ -85,10 +89,7 @@ function createTray(init = 0) {
 	const startItem = {
 		label: 'Start Record',
 		click: function () {
-			console.log("Start Record");
-			tray?.destroy()
-			tray = null
-			createTray(1)
+			createCountDownMaskWin();
 		}
 	}
 	const stopItem = {
@@ -113,5 +114,44 @@ function createTray(init = 0) {
 }
 
 
+function createCountDownMaskWin() {
+	if (maskWin) {
+		return;
+	}
+	maskWin = new BrowserWindow({
+		width: 800,
+		height: 600,
+		frame: true, // 无边框
+		transparent: true, // 透明窗口
+		alwaysOnTop: true, // 窗口总是显示在最前面
+		webPreferences: {
+			preload: path.join(__dirname, 'preload.mjs'),
+		},
+	})
 
-app.whenReady().then(createWindow)
+	// Test active push message to Renderer-process.
+	maskWin.webContents.on('did-finish-load', () => {
+		ipcMain.on('count-down-end', () => {
+			maskWin?.close()
+			maskWin = null
+			tray?.destroy()
+			tray = null
+			createTray(1)
+		})
+		// maskWin?.webContents.openDevTools()
+	})
+
+	if (VITE_DEV_SERVER_URL) {
+		maskWin.loadURL(VITE_DEV_SERVER_URL + 'countdownmask.html')
+	} else {
+		// win.loadFile('dist/index.html')
+		maskWin.loadFile(path.join(RENDERER_DIST, 'countdownmask.html'))
+	}
+	maskWin.maximize(); // 全屏显示窗口
+}
+
+// app.whenReady().then(createWindow)
+
+app.whenReady().then(() => {
+	createTray()
+})

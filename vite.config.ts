@@ -30,7 +30,8 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				index: 'index.html',
-				floating: 'floating.html'
+				floating: 'floating.html',
+				countdownmask: 'countdownmask.html'
 			}
 		}
 	}
