@@ -8,7 +8,7 @@ function DownMask() {
 
 	useEffect(() => {
 		if (count <= 0) {
-			window?.ipcRenderer.send('count-down-end')
+			window?.ipcRenderer.send('count_down_end_render')
 			return
 		} 
 		const interval = setInterval(() => {
@@ -20,7 +20,7 @@ function DownMask() {
 	}, [count])
   return (
     <>
-     <div className="countdown">{ count }</div>
+			<div className="countdown">{ count }</div>
     </>
   )
 }

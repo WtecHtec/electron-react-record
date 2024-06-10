@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, ipcMain } from 'electron'
+import { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer,screen } from 'electron'
 // import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -29,8 +29,18 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win: BrowserWindow | null
 let tray: Tray | null; // 全局变量来持有 Tray 实例
 let maskWin: BrowserWindow | null; // 全局变量来持有 倒计时浮窗 实例
+let recordWin: BrowserWindow | null; // 全局变量来持有 录屏浮窗 实例
+let editorWin: BrowserWindow | null; // 全局变量来持有 视频编辑 实例
+let blobUrl: string; // 全局变量来持有 录屏 结果
 
 
+const is_mac = process.platform === "darwin";
+
+// 如果是 macOS，则隐藏 dock 图标
+if (is_mac) {
+  app.dock.hide(); // - 1 -
+}
+// app.commandLine.appendSwitch('disable-features', 'IOSurfaceCapturer')
 function createWindow() {
 	win = new BrowserWindow({
 		icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
@@ -95,10 +105,13 @@ function createTray(init = 0) {
 	const stopItem = {
 		label: 'Stop Record',
 		click: function () {
-			console.log("Start Record");
+			console.log("Stop Record");
 			tray?.destroy()
 			tray = null
 			createTray(0)
+			if (recordWin) {
+				recordWin?.webContents.send('end_record_main')
+			}
 		}
 	}
 	const contextMenu = Menu.buildFromTemplate([
@@ -109,11 +122,15 @@ function createTray(init = 0) {
 		}
 	]);
 
-	tray.setToolTip('AV CRAFT');
+	tray.setToolTip('Record Craft');
 	tray.setContextMenu(contextMenu);
 }
 
 
+/**
+ * 倒计时浮窗
+ * @returns 
+ */
 function createCountDownMaskWin() {
 	if (maskWin) {
 		return;
@@ -131,12 +148,17 @@ function createCountDownMaskWin() {
 
 	// Test active push message to Renderer-process.
 	maskWin.webContents.on('did-finish-load', () => {
-		ipcMain.on('count-down-end', () => {
-			maskWin?.close()
+		ipcMain.on('count_down_end_render', () => {
+			maskWin?.hide()
 			maskWin = null
-			tray?.destroy()
-			tray = null
-			createTray(1)
+			try {
+				tray?.destroy()
+				tray = null
+				createTray(1)
+				createRecordWin()
+			} catch (error) {
+				console.log(error)
+			}
 		})
 		// maskWin?.webContents.openDevTools()
 	})
@@ -148,8 +170,114 @@ function createCountDownMaskWin() {
 		maskWin.loadFile(path.join(RENDERER_DIST, 'countdownmask.html'))
 	}
 	maskWin.maximize(); // 全屏显示窗口
+	// 设置窗口始终在最前面
+	maskWin.setAlwaysOnTop(true, "screen-saver"); // - 2 -
+	// 设置窗口在所有工作区都可见
+	maskWin.setVisibleOnAllWorkspaces(true); // - 3 -
 }
 
+
+
+/**
+ * 录屏状态 浮窗
+ * @returns 
+ */
+function createRecordWin() {
+	if (recordWin) {
+		return;
+	}
+	if (is_mac) {
+		app.dock.hide(); // - 1 -
+	}
+	// 获取屏幕的主显示器信息
+	const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
+	// 设置窗口的宽度和高度
+	const windowWidth = 120;
+	const windowHeight = 120;
+	// app.commandLine.appendSwitch('disable-features', 'IOSurfaceCapturer,DesktopCaptureMacV2')
+	recordWin = new BrowserWindow({
+		width: windowWidth,
+		height: windowHeight,
+		x: width / 2 - windowWidth / 2,
+		y: height - windowHeight,
+		frame: true, // 无边框
+		transparent: true, // 透明窗口
+		alwaysOnTop: true, // 窗口总是显示在最前面
+		webPreferences: {
+			preload: path.join(__dirname, 'preload.mjs'),
+		},
+	})
+
+	// Test active push message to Renderer-process.
+	recordWin.webContents.on('did-finish-load', () => {
+		desktopCapturer.getSources({ types: ['screen'] }).then(() => {
+			// console.log(sources)
+			recordWin?.webContents.send('start_record_main', 'screen:1:0')
+			// for (const source of sources) {
+			// 	if (source.name === 'Electron') {
+			// 		maskWin?.webContents.send('SET_SOURCE', source.id)
+			// 		return
+			// 	}
+			// }
+		})
+		ipcMain.on('stop_record_render', (_, url) => {
+			blobUrl = url
+			recordWin?.hide()
+			// recordWin = null
+			createEditorWindow()
+			tray?.destroy()
+			tray = null
+			createTray(0)
+		})
+		// recordWin?.webContents.openDevTools()
+	})
+
+	recordWin?.setContentProtection(true)
+	// 设置窗口始终在最前面
+	recordWin.setAlwaysOnTop(true, "screen-saver"); // - 2 -
+	// 设置窗口在所有工作区都可见
+	recordWin.setVisibleOnAllWorkspaces(true); // - 3 -
+
+	if (VITE_DEV_SERVER_URL) {
+		recordWin.loadURL(VITE_DEV_SERVER_URL + 'record.html')
+	} else {
+		// win.loadFile('dist/index.html')
+		recordWin.loadFile(path.join(RENDERER_DIST, 'record.html'))
+	}
+	// maskWin.maximize(); // 全屏显示窗口
+}
+
+/** 创建编辑器窗口 */
+function createEditorWindow() {
+	editorWin = new BrowserWindow({
+		icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+		webPreferences: {
+			preload: path.join(__dirname, 'preload.mjs'),
+		},
+	})
+
+	// Test active push message to Renderer-process.
+	editorWin.webContents.on('did-finish-load', () => {
+		editorWin?.webContents.send('record_url_main', blobUrl)
+		// 打开调试面板
+		// editorWin?.webContents.openDevTools()
+	})
+
+	editorWin.webContents.on('destroyed', () => {
+		recordWin?.close()
+		recordWin = null
+		blobUrl = ''
+	})
+
+	if (VITE_DEV_SERVER_URL) {
+		editorWin.loadURL(VITE_DEV_SERVER_URL + 'editor.html')
+	} else {
+		// win.loadFile('dist/index.html')
+		editorWin.loadFile(path.join(RENDERER_DIST, 'editor.html'))
+	}
+
+}
 // app.whenReady().then(createWindow)
 
 app.whenReady().then(() => {

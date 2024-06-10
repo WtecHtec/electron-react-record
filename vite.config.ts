@@ -31,7 +31,8 @@ export default defineConfig({
 			input: {
 				index: 'index.html',
 				floating: 'floating.html',
-				countdownmask: 'countdownmask.html'
+				countdownmask: 'countdownmask.html',
+				record: 'record.html',
 			}
 		}
 	}

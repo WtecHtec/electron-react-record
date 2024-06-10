@@ -1,0 +1,30 @@
+
+.record-container {
+	width: 100px;
+	height: 46px;
+	padding: 10px;
+	border-radius: 10px;
+	background-color: #fff;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	box-sizing: border-box;
+}
+
+.record-container:hover {
+	background-color: #eee;
+}
+
+.record-space {
+	width: 10px;
+	height: 10px;
+	margin-right: 10px;
+	background-color: red;
+	border-radius: 50%;
+}
+
+.record-duration {
+	color: red;
+	font-size: 14px;
+}
+
