@@ -40,7 +40,7 @@ function RecordApp() {
               chromeMediaSourceId: sourceId,
             },
           },
-        });
+        } as any);
 
         const options = { mimeType: 'video/webm; codecs=vp9' };
         const mediaRecorder = new MediaRecorder(mediaStream, options);

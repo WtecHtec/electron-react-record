@@ -22,6 +22,7 @@ import {
   desktopCapturer,
   screen,
 	dialog,
+	OpenDialogOptions,
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
@@ -218,7 +219,7 @@ function createEditorWindow() {
 		// 打开调试面板
 		// editorWin?.webContents.openDevTools()
 		ipcMain.handle('select-folder-render', async () => {
-			const options = {
+			const options: OpenDialogOptions = {
 				properties: ['openDirectory'],
 			};
 			const results = await dialog.showOpenDialog(options)

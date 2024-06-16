@@ -1,23 +1,24 @@
 import  { useRef, useState, useEffect } from 'react';  
 import './index.css'
-function FlatProgressBar({ initialValue = 0, value = 0, onChange }) {  
+function FlatProgressBar({ initialValue = 0, value = 0, onChange = (p: number)=> {} }) {
   const [progress, setProgress] = useState(initialValue);  
-  const progressBarRef = useRef(null);  
-  const handleRef = useRef(null);  
+  const progressBarRef = useRef<HTMLDivElement>(null);  
+  const handleRef = useRef<HTMLDivElement>(null);  
   
 	useEffect(() => {
 		setProgress(value);
 	}, [value])
   // 拖拽逻辑  
-  const handleDrag = (e) => {  
-    const rect = progressBarRef.current?.getBoundingClientRect();  
+  const handleDrag = (e: any) => {  
+		if (!progressBarRef.current) return
+    const rect = (progressBarRef.current as any)?.getBoundingClientRect();  
     const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));  
     setProgress(percent * 100);  
-    if (onChange) onChange(percent * 100);  
+    if (onChange && typeof onChange === 'function') onChange(percent * 100);  
   }
   
   useEffect(() => {  
-    const handleMouseDown = (e) => {
+    const handleMouseDown = (e: any) => {
       document.addEventListener('mousemove', handleDrag);  
       document.addEventListener('mouseup', handleMouseUp);  
     };  
@@ -48,6 +49,6 @@ function FlatProgressBar({ initialValue = 0, value = 0, onChange }) {
       />  
     </div>  
   );  
-}  
+}
   
 export default FlatProgressBar;

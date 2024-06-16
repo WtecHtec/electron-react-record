@@ -9,14 +9,14 @@ let savaFolder:string
 
 interface WasmMP4 {
 	end: () => Promise<Uint8Array>;
-	addFrame: (data: Uint8Array) => Promise<void>;
+	addFrame: (data: any) => Promise<void>;
 }
 function EditorApp() {
   const videoRef = useRef<HTMLVideoElement>(null);
 	const [currentCanvas, setCurrentCanvas] = useState<HTMLCanvasElement | null>()
 	const perviewCanvasRef = useRef<HTMLCanvasElement>(null)
 	const exportCanvasRef = useRef<HTMLCanvasElement>(null)
-	const mp4WasmRef = useRef<WasmMP4>(null)
+	let mp4WasmRef = useRef<WasmMP4 | null>(null)
 	const perviewRef = useRef({
 		wscale: 1,
 		hscale: 1,
@@ -154,7 +154,7 @@ function EditorApp() {
 			setVideoPlay((p) => {
 				return  {
 					...p,
-					progress: videoRef.current!.currentTime / videoRef.current?.duration * 100,
+					progress: videoRef.current!.currentTime / (videoRef.current?.duration || 1 ) * 100,
 					duration: videoRef.current?.duration === Infinity ? 0 : videoRef.current?.duration || 0,
 				}
 			})
