@@ -4,9 +4,12 @@ import GlobalLoading from '../compents/globalloading';
 import './editorapp.css'
 import FlatProgressBar from '../compents/progressbar';
 import { formatSecondsToHMS } from '../renderer/uitl';
+import { getEffectFrames } from './uitl';
+import { encode } from 'punycode';
 let addFramesHandlers: Promise<any>[] = []
 let savaFolder:string
-
+const MIN_FRAME_MOD_TIME = 1
+const SCALE_DEFAULT = 1.2
 interface WasmMP4 {
 	end: () => Promise<Uint8Array>;
 	addFrame: (data: any) => Promise<void>;
@@ -17,6 +20,7 @@ function EditorApp() {
 	const perviewCanvasRef = useRef<HTMLCanvasElement>(null)
 	const exportCanvasRef = useRef<HTMLCanvasElement>(null)
 	let mp4WasmRef = useRef<WasmMP4 | null>(null)
+	// 记录缩放比率
 	const perviewRef = useRef({
 		wscale: 1,
 		hscale: 1,
@@ -31,6 +35,15 @@ function EditorApp() {
 		duration: 0,
 		loaded: false
 	})
+	const renderFrameInfo = useRef({
+		lastScale: 1,
+		event: null,
+		index: 0,
+		effectFrames: [],
+		wscale: 1,
+		hscale:1,
+	})
+	// 获取视频源、处理鼠标、键盘事件
   useEffect(() => {
 		const handleLoadedmetadata = () => {
 			setVideoInfo({
@@ -51,6 +64,9 @@ function EditorApp() {
 				wscale,
 				hscale,
 			}
+			// 设置比例
+			renderFrameInfo.current.wscale = wscale
+			renderFrameInfo.current.hscale = hscale
 			perviewCanvasRef.current && setCurrentCanvas(perviewCanvasRef.current)
 			requestAnimationFrame(() => {
 				videoRef.current?.play()
@@ -65,18 +81,22 @@ function EditorApp() {
 						loaded: true
 					}
 				})
-				videoRef.current?.pause();
-				videoRef.current!.currentTime = 0
-				requestAnimationFrame(() => {
-					videoRef.current?.play()
-				})
+				// videoRef.current?.pause();
+				// videoRef.current!.currentTime = 0
+				// requestAnimationFrame(() => {
+				// 	videoRef.current?.play()
+				// })
 
 			}
 		}
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handle = async (_: unknown, data: any) => {
-			const {blobUrl, mouseEventDatas } = data
+			const {blobUrl, mouseEventDatas, recordTimeInfo} = data
 			console.log(mouseEventDatas)
+			if (mouseEventDatas && mouseEventDatas.length && recordTimeInfo) {
+				const events = getEffectFrames(recordTimeInfo, mouseEventDatas)
+				renderFrameInfo.current.effectFrames = events as any;
+			}
       videoRef.current!.src = blobUrl;
 			// videoRef.current!.addEventListener('canplaythrough', handleVideoLoadeddata);
 			videoRef.current!.addEventListener('durationchange', handleDurationchange);
@@ -90,17 +110,69 @@ function EditorApp() {
     };
   }, []);
 
+	// 将video帧绘制到canvas
 	const drawVideoFrame = useCallback(async () => {
 		if (!currentCanvas || !videoRef || !videoRef.current) return;
 		const canvasWidth = currentCanvas.width
 		const canvasHeight = currentCanvas.height
 		const context = currentCanvas?.getContext('2d')
+		if (!context) return;
+		// 清空帧
+		context.clearRect(0, 0, canvasWidth, canvasHeight);
+		context.scale(1, 1);
+		context.save();
+		let { effectFrames, index, event, lastScale, wscale, hscale } = renderFrameInfo.current
+		// 检索帧
+		if (!event) {
+			for (let i = index; i < effectFrames.length; i++) {
+				const { start, t } = effectFrames[i]
+				if (start <= videoRef.current.currentTime && videoRef.current.currentTime < start + t) {
+					event = effectFrames[i]
+					renderFrameInfo.current.event = event
+					renderFrameInfo.current.index = i + 1
+					break
+				}
+			}
+		}
+		// 处理帧
+		if (event) {
+			let {x, y , start, t, scale = SCALE_DEFAULT} = event as any
+			x = x * wscale
+			y = y * wscale
+			let newScale = 1
+			// 开始帧
+			if (videoRef.current.currentTime - start < MIN_FRAME_MOD_TIME) {
+				newScale = newScale + (videoRef.current.currentTime - start) / 1 * (scale - 1)
+				lastScale = newScale
+				renderFrameInfo.current.lastScale = lastScale
+			}
+			// 结束帧
+			if (videoRef.current.currentTime >= start + t - MIN_FRAME_MOD_TIME && videoRef.current.currentTime < start + t) {
+				newScale = lastScale - ((lastScale - 1) - (start + t - videoRef.current.currentTime) / 1 * (lastScale - 1))
+			}
+			// 持续帧
+			if (videoRef.current.currentTime - start > MIN_FRAME_MOD_TIME && videoRef.current.currentTime < start + t - MIN_FRAME_MOD_TIME) {
+				newScale = lastScale
+			}
+			context.translate(x, y);
+			context.scale(newScale, newScale);
+			context.translate(-x, -y);
+			if (videoRef.current.currentTime >= start + t) {
+				event = null
+				renderFrameInfo.current.event = event
+				renderFrameInfo.current.index = 0
+			}
+		}
+    // 绘制视频帧
 		context!.drawImage(videoRef.current, 0, 0, canvasWidth, canvasHeight);
 		context!.restore()
 		if (!videoInfo.status) return
 		if (mp4WasmRef.current) {
-			const addFrame = mp4WasmRef.current.addFrame(videoRef.current);
-			addFramesHandlers.push(addFrame)
+			const addFrame = async (currentCanvas: HTMLCanvasElement, encode: WasmMP4) => {
+				const bitmap = await createImageBitmap(currentCanvas)
+				await encode.addFrame(bitmap);
+			}
+			addFramesHandlers.push(addFrame(currentCanvas, mp4WasmRef.current))
 		}
 		requestAnimationFrame(drawVideoFrame)
 	}, [currentCanvas, videoInfo])
@@ -113,6 +185,8 @@ function EditorApp() {
 			status: status,
 			export: 0,
 		})
+		renderFrameInfo.current.hscale = perviewRef.current.hscale
+		renderFrameInfo.current.wscale = perviewRef.current.wscale
 		if (currentCanvas !== perviewCanvasRef.current) {
 			setCurrentCanvas(perviewCanvasRef.current)
 		}
@@ -149,6 +223,7 @@ function EditorApp() {
 					})
 				})
 			}
+			initRenderFrameInfo()
 		}
 		const updateScrubber = () => {
 			setVideoPlay((p) => {
@@ -180,6 +255,7 @@ function EditorApp() {
 			status: false,
 			export: 1,
 		})
+		
 		const MP4 = await loadMP4Module();
 		const encoder = MP4.createWebCodecsEncoder({
 			width: exportCanvasRef.current?.width,
@@ -190,12 +266,22 @@ function EditorApp() {
 		if (videoRef.current) {
 			videoRef.current.currentTime = 0
 		}
+		initRenderFrameInfo()
+		// 导出的时候还原宽高比率
+		renderFrameInfo.current.hscale = 1
+		renderFrameInfo.current.wscale = 1
 		setCurrentCanvas(exportCanvasRef.current)
 		requestAnimationFrame(() => {
 			videoRef.current?.play()
 			// mp4WasmRef.current!.start()
 		})
-		console.log('encoder---', encoder);
+		// console.log('encoder---', encoder);
+	}
+	// 初始化,缩放帧数据
+	const initRenderFrameInfo = () => {
+		renderFrameInfo.current.event = null
+		renderFrameInfo.current.index = 0
+		renderFrameInfo.current.lastScale = 1
 	}
 	const handleProgressBar = (progress: number) => {
 		console.log(progress)

@@ -4,6 +4,7 @@ const KEY_DOWN_MIN_SEC = 2 // 键盘事件2s内合并
 const MOUSE_DOWN_MAX_SEC = 4 // 鼠标点击事件4s内合并
 const EFFECT_TIME = 2 // 效果时长
 /**
+ * 最后一个点击事件舍弃【结束点击】
  * 计算缩放帧时间
  * 返回数组: [ { x, y, type, start, end, t }]
  * start、end表示视频的播放时长的时间
@@ -16,7 +17,7 @@ export const getEffectFrames = (recordTimeInfo: any, evenFrames: any) => {
 	const cutFrames = []
 	let i = 0
 
-	while (i < evenFrames.length) {
+	while (i < evenFrames.length - 1) {
 		const { time, type, use } = evenFrames[i]
 		const sec = Math.floor((time - startTime) / 1000)
 		if (type === 'mousedown' && !use) {
@@ -27,7 +28,7 @@ export const getEffectFrames = (recordTimeInfo: any, evenFrames: any) => {
 				children: [],
 			}
 			evenFrames[i].use = true
-			for (let j = i; j < evenFrames.length; j++) {
+			for (let j = i; j < evenFrames.length - 1; j++) {
 				const { time: time1, type: type1, use: use1 } = evenFrames[j];
 				const sec0 = Math.floor((time1 - startTime) / 1000)
 				if (type1 === 'keydown' && sec0 - item.end <= KEY_DOWN_MIN_SEC) {
