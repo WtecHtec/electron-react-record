@@ -24,6 +24,7 @@ function EditorApp() {
 	const perviewRef = useRef({
 		wscale: 1,
 		hscale: 1,
+		playstatus: false,
 	})
 	const [videoInfo, setVideoInfo] = useState({
 		loaded: false,
@@ -41,7 +42,7 @@ function EditorApp() {
 		index: 0,
 		effectFrames: [],
 		wscale: 1,
-		hscale:1,
+		hscale: 1,
 	})
 	// 获取视频源、处理鼠标、键盘事件
   useEffect(() => {
@@ -63,6 +64,7 @@ function EditorApp() {
 				...perviewRef.current,
 				wscale,
 				hscale,
+				playstatus: true
 			}
 			// 设置比例
 			renderFrameInfo.current.wscale = wscale
@@ -96,6 +98,7 @@ function EditorApp() {
 			if (mouseEventDatas && mouseEventDatas.length && recordTimeInfo) {
 				const events = getEffectFrames(recordTimeInfo, mouseEventDatas)
 				renderFrameInfo.current.effectFrames = events as any;
+				console.log(events)
 			}
       videoRef.current!.src = blobUrl;
 			// videoRef.current!.addEventListener('canplaythrough', handleVideoLoadeddata);
@@ -111,7 +114,7 @@ function EditorApp() {
   }, []);
 
 	// 将video帧绘制到canvas
-	const drawVideoFrame = useCallback(async () => {
+	const drawVideoFrame = async () => {
 		if (!currentCanvas || !videoRef || !videoRef.current) return;
 		const canvasWidth = currentCanvas.width
 		const canvasHeight = currentCanvas.height
@@ -136,9 +139,10 @@ function EditorApp() {
 		}
 		// 处理帧
 		if (event) {
+			console.log('event --- 处理帧')
 			let {x, y , start, t, scale = SCALE_DEFAULT} = event as any
 			x = x * wscale
-			y = y * wscale
+			y = y * hscale
 			let newScale = 1
 			// 开始帧
 			if (videoRef.current.currentTime - start < MIN_FRAME_MOD_TIME) {
@@ -166,7 +170,8 @@ function EditorApp() {
     // 绘制视频帧
 		context!.drawImage(videoRef.current, 0, 0, canvasWidth, canvasHeight);
 		context!.restore()
-		if (!videoInfo.status) return
+		console.log('videoInfo.status===', perviewRef.current.playstatus)
+		if (!perviewRef.current.playstatus) return
 		if (mp4WasmRef.current) {
 			const addFrame = async (currentCanvas: HTMLCanvasElement, encode: WasmMP4) => {
 				const bitmap = await createImageBitmap(currentCanvas)
@@ -175,9 +180,12 @@ function EditorApp() {
 			addFramesHandlers.push(addFrame(currentCanvas, mp4WasmRef.current))
 		}
 		requestAnimationFrame(drawVideoFrame)
-	}, [currentCanvas, videoInfo])
+	}
 
 	const handelPlay = () => {
+		if (videoRef.current?.currentTime === 0 || videoRef.current?.currentTime === videoRef.current?.duration) {
+			initRenderFrameInfo()
+		}
 		videoInfo.status ? videoRef.current!.pause() :  videoRef.current!.play()
 		const status = !videoInfo.status
 		setVideoInfo({
@@ -185,6 +193,7 @@ function EditorApp() {
 			status: status,
 			export: 0,
 		})
+		perviewRef.current.playstatus = status
 		renderFrameInfo.current.hscale = perviewRef.current.hscale
 		renderFrameInfo.current.wscale = perviewRef.current.wscale
 		if (currentCanvas !== perviewCanvasRef.current) {
@@ -198,6 +207,7 @@ function EditorApp() {
 			requestAnimationFrame(drawVideoFrame)
 		}
 		const onStop = async () => {
+			perviewRef.current.playstatus = false
 			if (!mp4WasmRef.current) {
 				setVideoInfo({
 					loaded: true,
@@ -254,8 +264,8 @@ function EditorApp() {
 			loaded: true,
 			status: false,
 			export: 1,
-		})
-		
+		}) 
+		perviewRef.current.playstatus = true
 		const MP4 = await loadMP4Module();
 		const encoder = MP4.createWebCodecsEncoder({
 			width: exportCanvasRef.current?.width,

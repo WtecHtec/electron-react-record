@@ -149,7 +149,7 @@ const recordTimeInfo = {
 } 
 const mouseEventDatas: { type: string; x?: number; y?: number; time: number; }[] = []; // 鼠标、键盘事件数据
 const isMac = process.platform === "darwin";
-
+const HANLDE_MAP: string[] = []
 
 /**
  * 系统托盘
@@ -217,40 +217,19 @@ function createEditorWindow() {
 	editorWin.webContents.on('did-finish-load', () => {
 		editorWin?.webContents.send('record_url_main',  { blobUrl, mouseEventDatas, recordTimeInfo })
 		// 打开调试面板
-		// editorWin?.webContents.openDevTools()
-		ipcMain.handle('select-folder-render', async () => {
-			const options: OpenDialogOptions = {
-				properties: ['openDirectory'],
-			};
-			const results = await dialog.showOpenDialog(options)
-			if (!results.canceled) {
-				return results.filePaths[0]
-			}
-			return ''
-		})
-
-		ipcMain.handle('exprot-blob-render', async (_, {arrayBuffer, folder} ) => {
-			const buffer = Buffer.from(arrayBuffer);  
-			const filePath = `${folder}/av-craft-${timestamp2Time(new Date().getTime())}.mp4`
-			fs.writeFileSync(filePath, buffer);
-			// 导出成功后，2s之后退出应用
-			setTimeout(() => {
-				openFolderInExplorer(folder)
-				app.quit()
-			}, 1 * 1000)
-			return filePath
-		})
+		editorWin?.webContents.openDevTools()
 	})
 
-	editorWin.webContents.on('destroyed', () => {
+	editorWin.on('closed', () => {
+		// editorWin?.close()
+		editorWin = null
 		recordWin?.close()
 		recordWin = null
 		blobUrl = ''
 	})
- 
+	// editorWin.webContents.on('destroyed', () => {
 	
-
-
+	// })
 	editorWin.loadURL(resolveHtmlPath('editor.html'));
 	// if (VITE_DEV_SERVER_URL) {
 	// 	editorWin.loadURL(VITE_DEV_SERVER_URL + 'editor.html')
@@ -306,21 +285,6 @@ function createRecordWin() {
 			// 	}
 			// }
 		})
-		ipcMain.on('stop_record_render', (_: unknown, url: string) => {
-			uIOhook.stop()
-			blobUrl = url
-			recordWin?.hide()
-			recordWin = null
-			createEditorWindow()
-			tray?.destroy()
-			tray = null
-			createTray(0)
-			recordTimeInfo.endTime = new Date().getTime()
-		})
-		ipcMain.on('record_mouse_render', () => {
-			uIOhook.start()
-			recordTimeInfo.startTime = new Date().getTime()
-		});
 		// recordWin?.webContents.openDevTools()
 	});
 
@@ -365,18 +329,6 @@ function createCountDownMaskWin() {
 
 	// Test active push message to Renderer-process.
 	maskWin.webContents.on('did-finish-load', () => {
-		ipcMain.on('count_down_end_render', () => {
-			maskWin?.hide()
-			maskWin = null
-			try {
-				tray?.destroy()
-				tray = null
-				createTray(1)
-				createRecordWin()
-			} catch (error) {
-				console.log(error)
-			}
-		})
 		// maskWin?.webContents.openDevTools()
 	})
 	// if (VITE_DEV_SERVER_URL) {
@@ -394,6 +346,69 @@ function createCountDownMaskWin() {
 	maskWin.setVisibleOnAllWorkspaces(true); // - 3 -
 }
 
+
+function handleMessages() {
+	// 结束录制
+	ipcMain.on('stop_record_render', (_: unknown, url: string) => {
+		uIOhook.stop()
+		blobUrl = url
+		recordWin?.hide()
+		recordWin = null
+		createEditorWindow()
+		tray?.destroy()
+		tray = null
+		createTray(0)
+		recordTimeInfo.endTime = new Date().getTime()
+	})
+	// 开始录制、开启记录鼠标
+	ipcMain.on('record_mouse_render', () => {
+		uIOhook.start()
+		recordTimeInfo.startTime = new Date().getTime()
+	});
+	// 倒计时结束
+	ipcMain.on('count_down_end_render', () => {
+		maskWin?.hide()
+		maskWin = null
+		try {
+			tray?.destroy()
+			tray = null
+			createTray(1)
+			createRecordWin()
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	// 选择保存录制文件夹
+	if (!HANLDE_MAP.includes('select-folder-render')) {
+		HANLDE_MAP.push('select-folder-render')
+		ipcMain.handle('select-folder-render', async () => {
+			const options: OpenDialogOptions = {
+				properties: ['openDirectory'],
+			};
+			const results = await dialog.showOpenDialog(options)
+			if (!results.canceled) {
+				return results.filePaths[0]
+			}
+			return ''
+		})
+	}
+	// 导出
+	if (!HANLDE_MAP.includes('exprot-blob-render')) { 
+		HANLDE_MAP.push('exprot-blob-render')
+		ipcMain.handle('exprot-blob-render', async (_, {arrayBuffer, folder} ) => {
+			const buffer = Buffer.from(arrayBuffer);  
+			const filePath = `${folder}/av-craft-${timestamp2Time(new Date().getTime())}.mp4`
+			fs.writeFileSync(filePath, buffer);
+			// 导出成功后，2s之后退出应用
+			setTimeout(() => {
+				openFolderInExplorer(folder)
+				app.quit()
+			}, 1 * 1000)
+			return filePath
+		})
+	}
+}
 
 app
   .whenReady()
@@ -434,6 +449,7 @@ app
 		})
 
 		createTray();
+		handleMessages();
     // createWindow();
     // app.on('activate', () => {
     //   // On macOS it's common to re-create a window in the app when the
