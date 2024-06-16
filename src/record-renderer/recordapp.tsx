@@ -48,6 +48,7 @@ function RecordApp() {
         mediaRecorder.onstart = () => {
           recordRef.current.recordedChunks = [];
           recordRef.current.status = true;
+					window.electron.ipcRenderer.sendMessage('record_mouse_render');
           updateDuration();
         };
         // eslint-disable-next-line func-names

@@ -21,12 +21,14 @@ import {
   Menu,
   desktopCapturer,
   screen,
+	dialog,
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
-import { resolveHtmlPath } from './util';
-
+import { openFolderInExplorer, resolveHtmlPath, timestamp2Time } from './util';
+import { uIOhook, } from 'uiohook-napi'
+import fs from 'fs'
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -51,9 +53,9 @@ if (process.env.NODE_ENV === 'production') {
 const isDebug =
   process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 
-if (isDebug) {
-  require('electron-debug')();
-}
+// if (isDebug) {
+//   require('electron-debug')();
+// }
 
 const installExtensions = async () => {
   const installer = require('electron-devtools-installer');
@@ -140,6 +142,11 @@ let maskWin: BrowserWindow | null; // 全局变量来持有 倒计时浮窗 实�
 let recordWin: BrowserWindow | null; // 全局变量来持有 录屏浮窗 实例
 let editorWin: BrowserWindow | null; // 全局变量来持有 视频编辑 实例
 let blobUrl: string; // 全局变量来持有 录屏 结果
+const recordTimeInfo = {
+	startTime: 0, // 开始录制时间
+	endTime: 0, // 结束录制时间
+} 
+const mouseEventDatas: { type: string; x?: number; y?: number; time: number; }[] = []; // 鼠标、键盘事件数据
 const isMac = process.platform === "darwin";
 
 
@@ -157,6 +164,7 @@ function createTray(init = 0) {
 	const startItem = {
 		label: 'Start Record',
 		click () {
+			mouseEventDatas.length = 0
 			// eslint-disable-next-line no-use-before-define
 			createCountDownMaskWin();
 		}
@@ -191,7 +199,13 @@ function createTray(init = 0) {
 function createEditorWindow() {
 	editorWin = new BrowserWindow({
 	//	icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+		width: 800,
+		height: 600,
+		// transparent: true, // 透明窗口
+		// frame: true, // 无边框
+		resizable: false,
 		webPreferences: {
+			webSecurity: false, // 禁用相同来源策略  
 			preload: app.isPackaged
 			? path.join(__dirname, 'preload.js')
 			: path.join(__dirname, '../../.erb/dll/preload.js'),
@@ -200,9 +214,31 @@ function createEditorWindow() {
 
 	// Test active push message to Renderer-process.
 	editorWin.webContents.on('did-finish-load', () => {
-		editorWin?.webContents.send('record_url_main', blobUrl)
+		editorWin?.webContents.send('record_url_main',  { blobUrl, mouseEventDatas, recordTimeInfo })
 		// 打开调试面板
 		// editorWin?.webContents.openDevTools()
+		ipcMain.handle('select-folder-render', async () => {
+			const options = {
+				properties: ['openDirectory'],
+			};
+			const results = await dialog.showOpenDialog(options)
+			if (!results.canceled) {
+				return results.filePaths[0]
+			}
+			return ''
+		})
+
+		ipcMain.handle('exprot-blob-render', async (_, {arrayBuffer, folder} ) => {
+			const buffer = Buffer.from(arrayBuffer);  
+			const filePath = `${folder}/av-craft-${timestamp2Time(new Date().getTime())}.mp4`
+			fs.writeFileSync(filePath, buffer);
+			// 导出成功后，2s之后退出应用
+			setTimeout(() => {
+				openFolderInExplorer(folder)
+				app.quit()
+			}, 1 * 1000)
+			return filePath
+		})
 	})
 
 	editorWin.webContents.on('destroyed', () => {
@@ -210,6 +246,10 @@ function createEditorWindow() {
 		recordWin = null
 		blobUrl = ''
 	})
+ 
+	
+
+
 	editorWin.loadURL(resolveHtmlPath('editor.html'));
 	// if (VITE_DEV_SERVER_URL) {
 	// 	editorWin.loadURL(VITE_DEV_SERVER_URL + 'editor.html')
@@ -236,14 +276,14 @@ function createRecordWin() {
 	const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
 	// 设置窗口的宽度和高度
-	const windowWidth = 320;
-	const windowHeight = 320;
+	const windowWidth = 120;
+	const windowHeight = 120;
 	// app.commandLine.appendSwitch('disable-features', 'IOSurfaceCapturer,DesktopCaptureMacV2')
 	recordWin = new BrowserWindow({
 		width: windowWidth,
 		height: windowHeight,
-		// x: width / 2 - windowWidth / 2,
-		// y: height - windowHeight,
+		x: width - windowWidth,
+		y: height - windowHeight,
 		frame: true, // 无边框
 		transparent: true, // 透明窗口
 		alwaysOnTop: true, // 窗口总是显示在最前面
@@ -256,8 +296,7 @@ function createRecordWin() {
 
 	// Test active push message to Renderer-process.
 	recordWin.webContents.on('did-finish-load', () => {
-		desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
-			console.log(sources)
+		desktopCapturer.getSources({ types: ['screen'] }).then(() => {
 			recordWin?.webContents.send('start_record_main', 'screen:1:0')
 			// for (const source of sources) {
 			// 	if (source.name === 'Electron') {
@@ -266,7 +305,8 @@ function createRecordWin() {
 			// 	}
 			// }
 		})
-		ipcMain.on('stop_record_render', (_: any, url: string) => {
+		ipcMain.on('stop_record_render', (_: unknown, url: string) => {
+			uIOhook.stop()
 			blobUrl = url
 			recordWin?.hide()
 			recordWin = null
@@ -274,16 +314,20 @@ function createRecordWin() {
 			tray?.destroy()
 			tray = null
 			createTray(0)
+			recordTimeInfo.endTime = new Date().getTime()
 		})
+		ipcMain.on('record_mouse_render', () => {
+			uIOhook.start()
+			recordTimeInfo.startTime = new Date().getTime()
+		});
 		// recordWin?.webContents.openDevTools()
-	})
+	});
 
 	recordWin?.setContentProtection(true)
 	// 设置窗口始终在最前面
 	recordWin.setAlwaysOnTop(true, "screen-saver"); // - 2 -
 	// 设置窗口在所有工作区都可见
 	recordWin.setVisibleOnAllWorkspaces(true); // - 3 -
-	recordWin.setContentProtection(true);
 	recordWin.loadURL(resolveHtmlPath('record.html'));
 	// if (VITE_DEV_SERVER_URL) {
 	// 	recordWin.loadURL(VITE_DEV_SERVER_URL + 'record.html')
@@ -350,12 +394,44 @@ function createCountDownMaskWin() {
 }
 
 
-
-
-
 app
   .whenReady()
   .then(() => {
+		// 监听系统级事件
+		uIOhook.on('mousemove', (e) => {
+			const { x , y}  = e;
+			mouseEventDatas.push({
+				type: 'mousemove',
+				x,
+				y,
+				time: new Date().getTime(),
+			})
+		})
+
+		uIOhook.on('mousedown', (e) => {
+			const { x , y}  = e;
+			mouseEventDatas.push({
+				type: 'mousedown',
+				x,
+				y,
+				time: new Date().getTime(),
+			})
+		})
+
+		uIOhook.on('keydown', () => {
+			mouseEventDatas.push({
+				type: 'keydown',
+				time: new Date().getTime(),
+			})
+		})
+
+		uIOhook.on('keyup', () => {
+			mouseEventDatas.push({
+				type: 'keyup',
+				time: new Date().getTime(),
+			})
+		})
+
 		createTray();
     // createWindow();
     // app.on('activate', () => {

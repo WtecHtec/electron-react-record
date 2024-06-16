@@ -225,7 +225,7 @@ const configuration: webpack.Configuration = {
 
     new HtmlWebpackPlugin({
       filename: path.join('record.html'),
-      template: path.join(webpackPaths.srcCountDownRendererPath, 'index.ejs'),
+      template: path.join(webpackPaths.srcRecordRendererPath, 'index.ejs'),
       minify: {
         collapseWhitespace: true,
         removeAttributeQuotes: true,
@@ -239,7 +239,7 @@ const configuration: webpack.Configuration = {
     }),
     new HtmlWebpackPlugin({
       filename: path.join('editor.html'),
-      template: path.join(webpackPaths.srcCountDownRendererPath, 'index.ejs'),
+      template: path.join(webpackPaths.srcEditorRendererPath, 'index.ejs'),
       minify: {
         collapseWhitespace: true,
         removeAttributeQuotes: true,

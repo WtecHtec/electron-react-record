@@ -1,4 +1,5 @@
 export function formatSecondsToHMS(seconds: number) {
+	if (!seconds) return '00:00:00';
   let hours: string | number = Math.floor(seconds / 3600);
   let minutes: string | number = Math.floor((seconds % 3600) / 60);
   let secs: string | number = Math.floor(seconds % 60);
