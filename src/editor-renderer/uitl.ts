@@ -16,9 +16,8 @@ export const getEffectFrames = (recordTimeInfo: any, evenFrames: any) => {
 
 	const cutFrames = []
 	let i = 0
-
 	while (i < evenFrames.length - 1) {
-		const { time, type, use } = evenFrames[i]
+		const { time, type, use, x, y } = evenFrames[i]
 		const sec = Math.floor((time - startTime) / 1000)
 		if (type === 'mousedown' && !use) {
 			const item = {
@@ -41,8 +40,15 @@ export const getEffectFrames = (recordTimeInfo: any, evenFrames: any) => {
 						break
 					} else {
 						evenFrames[j].use = true
+						evenFrames[j].start = sec0
+						evenFrames[j].t = sec0 - item.end
 						item.end = sec0
-						item.children.push(evenFrames[j])
+						const { x: x1, y: y1} = evenFrames[j]
+						const modx = Math.abs(x1 - x)
+						const mody = Math.abs(y1 - y)
+						if (modx >= 500 || mody >= 500) {
+							item.children.push(evenFrames[j])
+						}
 					}
 				}
 			}

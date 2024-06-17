@@ -124,7 +124,7 @@ function EditorApp() {
 		context.clearRect(0, 0, canvasWidth, canvasHeight);
 		context.scale(1, 1);
 		context.save();
-		let { effectFrames, index, event, lastScale, wscale, hscale } = renderFrameInfo.current
+		let { effectFrames, index, event, lastScale, wscale, hscale, } = renderFrameInfo.current
 		// 检索帧
 		if (!event) {
 			for (let i = index; i < effectFrames.length; i++) {
@@ -139,24 +139,41 @@ function EditorApp() {
 		}
 		// 处理帧
 		if (event) {
-			console.log('event --- 处理帧')
-			let {x, y , start, t, scale = SCALE_DEFAULT} = event as any
+			// console.log('event --- 处理帧')
+			let {x, y , start, t, children, scale = SCALE_DEFAULT} = event as any
 			x = x * wscale
 			y = y * hscale
 			let newScale = 1
 			// 开始帧
 			if (videoRef.current.currentTime - start < MIN_FRAME_MOD_TIME) {
-				newScale = newScale + (videoRef.current.currentTime - start) / 1 * (scale - 1)
+				newScale = newScale + (videoRef.current.currentTime - start) / MIN_FRAME_MOD_TIME * (scale - 1)
 				lastScale = newScale
 				renderFrameInfo.current.lastScale = lastScale
 			}
 			// 结束帧
 			if (videoRef.current.currentTime >= start + t - MIN_FRAME_MOD_TIME && videoRef.current.currentTime < start + t) {
-				newScale = lastScale - ((lastScale - 1) - (start + t - videoRef.current.currentTime) / 1 * (lastScale - 1))
+				newScale = lastScale - ((lastScale - 1) - (start + t - videoRef.current.currentTime) / MIN_FRAME_MOD_TIME * (lastScale - 1))
 			}
 			// 持续帧
 			if (videoRef.current.currentTime - start > MIN_FRAME_MOD_TIME && videoRef.current.currentTime < start + t - MIN_FRAME_MOD_TIME) {
 				newScale = lastScale
+			}
+			// 移动帧
+			if (newScale === lastScale && children && children.length) {
+				for (let i = 0; i < children.length; i++) {
+					const { start: cstart, t: ct, x: cx, y: cy } = children[i];
+					if (videoRef.current.currentTime >= cstart
+						&& videoRef.current.currentTime < cstart + ct) {
+						let modx = x -cx * wscale
+						let mody = y - cy * hscale
+						modx = (cstart + ct - videoRef.current.currentTime) / ct * Math.abs(modx)
+						mody = (cstart + ct - videoRef.current.currentTime) / ct * Math.abs(mody)
+						x = x + (modx > 0 ? -1 : 1) * modx
+						y = y + (modx > 0 ? -1 : 1) * mody
+						console.log('移动帧', x, y)
+						break
+					}
+				}
 			}
 			context.translate(x, y);
 			context.scale(newScale, newScale);
@@ -167,10 +184,10 @@ function EditorApp() {
 				renderFrameInfo.current.index = 0
 			}
 		}
-    // 绘制视频帧
+    	// 绘制视频帧
 		context!.drawImage(videoRef.current, 0, 0, canvasWidth, canvasHeight);
 		context!.restore()
-		console.log('videoInfo.status===', perviewRef.current.playstatus)
+		// console.log('videoInfo.status===', perviewRef.current.playstatus)
 		if (!perviewRef.current.playstatus) return
 		if (mp4WasmRef.current) {
 			const addFrame = async (currentCanvas: HTMLCanvasElement, encode: WasmMP4) => {
