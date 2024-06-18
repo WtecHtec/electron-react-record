@@ -130,7 +130,7 @@ function EditorApp() {
 		context.clearRect(0, 0, canvasWidth, canvasHeight);
 		context.scale(1, 1);
 		context.save();
-		let { effectFrames, index, event, lastScale, wscale, hscale, } = renderFrameInfo.current
+		let { effectFrames, index, event, lastScale, wscale, hscale, sx, sy} = renderFrameInfo.current
 		// 检索帧
 		if (!event) {
 			renderFrameInfo.current.tIndex = 0
