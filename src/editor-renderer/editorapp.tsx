@@ -5,10 +5,9 @@ import './editorapp.css'
 import FlatProgressBar from '../compents/progressbar';
 import { formatSecondsToHMS } from '../renderer/uitl';
 import { getEffectFrames } from './uitl';
-import { encode } from 'punycode';
 let addFramesHandlers: Promise<any>[] = []
 let savaFolder:string
-const MIN_FRAME_MOD_TIME = 1
+const MIN_FRAME_MOD_TIME = 0.8
 const SCALE_DEFAULT = 1.2
 interface WasmMP4 {
 	end: () => Promise<Uint8Array>;
@@ -119,7 +118,7 @@ function EditorApp() {
     };
   }, []);
 
-	// 将video帧绘制到canvas
+	// 将video帧绘制到canvas【缩放、移动】
 	const drawVideoFrame = async () => {
 		if (!currentCanvas || !videoRef || !videoRef.current) return;
 		const canvasWidth = currentCanvas.width
@@ -153,6 +152,11 @@ function EditorApp() {
 			let {x, y , start, t, children, scale = SCALE_DEFAULT} = event as any
 			x = x * wscale
 			y = y * hscale
+			// 记录移动x\y;解决缩放帧还原空白
+			if (renderFrameInfo.current.tReset === true) {
+				renderFrameInfo.current.sx = x
+				renderFrameInfo.current.sy = y
+			}
 			let newScale = 1
 			// 开始帧
 			if (videoRef.current.currentTime - start < MIN_FRAME_MOD_TIME) {
@@ -162,6 +166,7 @@ function EditorApp() {
 			}
 			// 结束帧
 			if (videoRef.current.currentTime >= start + t - MIN_FRAME_MOD_TIME && videoRef.current.currentTime < start + t) {
+				// console.log('结束帧', renderFrameInfo.current)
 				newScale = lastScale - ((lastScale - 1) - (start + t - videoRef.current.currentTime) / MIN_FRAME_MOD_TIME * (lastScale - 1))
 			}
 			// 持续帧
@@ -169,13 +174,12 @@ function EditorApp() {
 				newScale = lastScale
 			}
 
-		
 
-			// 移动帧
-			if (newScale === lastScale && children && children.length) {
-				let { tIndex, tx, ty, } = renderFrameInfo.current
-				if (!children[tIndex]) return;
-				const { start: cstart, t: ct, x: cx, y: cy } = children[tIndex];
+			// 移动帧；处理当点击事件偏移大于500像素
+			let { tIndex, tx, ty, } = renderFrameInfo.current
+			if (children && children.length && children[tIndex]) {
+				let { start: cstart, t: ct, x: cx, y: cy } = children[tIndex];
+				ct = 0.5
 				if (videoRef.current.currentTime >= cstart
 					&& videoRef.current.currentTime < cstart + ct) {
 					let modx = cx * wscale - tx * wscale
@@ -184,17 +188,31 @@ function EditorApp() {
 					let modyScale = (1 - (cstart + ct - videoRef.current.currentTime) / ct ) * (mody)
 					x = tx * wscale +  modxScale
 					y = ty * hscale +  modyScale
-					console.log('移动帧', tIndex, x, y, cx * wscale, cy * hscale , tx * wscale, ty * hscale, modx, mody)
 					renderFrameInfo.current.tReset = false
+					// 记录移动x\y;解决缩放帧还原空白
+					renderFrameInfo.current.sx = x
+					renderFrameInfo.current.sy = y
 				}
 				if (renderFrameInfo.current.tReset === false && videoRef.current.currentTime >= cstart + ct) {
+					// 解决缩放帧还原空白，先还原一次
+					// x = renderFrameInfo.current.sx
+					// y = renderFrameInfo.current.sy
 					renderFrameInfo.current.tIndex = tIndex + 1
 					renderFrameInfo.current.tx = cx
 					renderFrameInfo.current.ty = cy
+					// renderFrameInfo.current.tReset = true
+					// console.log('移动帧结束', renderFrameInfo.current)
 				}
  			}
 
-	
+			// if (renderFrameInfo.current.tReset === false) {
+			// 	x = renderFrameInfo.current.sx
+			// 	y = renderFrameInfo.current.sy
+			// 	console.log('移动帧', renderFrameInfo.current)
+			// }
+			x = renderFrameInfo.current.sx
+			y = renderFrameInfo.current.sy
+			// console.log('帧x\y', x, y)
 			 context.translate(x, y);
 			 context.scale(newScale, newScale);
 			 context.translate(-x, -y);
@@ -332,7 +350,7 @@ function EditorApp() {
 		renderFrameInfo.current.lastScale = 1
 	}
 	const handleProgressBar = (progress: number) => {
-		console.log(progress)
+		// console.log(progress)
 		const value = progress * videoRef.current!.duration / 100
 		videoRef.current!.currentTime = isNaN(value) ? 0 : value
 	}
