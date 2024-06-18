@@ -40,9 +40,15 @@ function EditorApp() {
 		lastScale: 1,
 		event: null,
 		index: 0,
+		sx: 0,
+		sy: 0,
 		effectFrames: [],
 		wscale: 1,
 		hscale: 1,
+		tReset: false,
+		tIndex: 0,
+		tx: 0,
+		ty: 0,
 	})
 	// 获取视频源、处理鼠标、键盘事件
   useEffect(() => {
@@ -127,12 +133,16 @@ function EditorApp() {
 		let { effectFrames, index, event, lastScale, wscale, hscale, } = renderFrameInfo.current
 		// 检索帧
 		if (!event) {
+			renderFrameInfo.current.tIndex = 0
+			renderFrameInfo.current.tReset = true
 			for (let i = index; i < effectFrames.length; i++) {
 				const { start, t } = effectFrames[i]
 				if (start <= videoRef.current.currentTime && videoRef.current.currentTime < start + t) {
 					event = effectFrames[i]
 					renderFrameInfo.current.event = event
 					renderFrameInfo.current.index = i + 1
+					renderFrameInfo.current.tx = (event as any).x
+					renderFrameInfo.current.ty = (event as any).y
 					break
 				}
 			}
@@ -158,26 +168,37 @@ function EditorApp() {
 			if (videoRef.current.currentTime - start > MIN_FRAME_MOD_TIME && videoRef.current.currentTime < start + t - MIN_FRAME_MOD_TIME) {
 				newScale = lastScale
 			}
+
+		
+
 			// 移动帧
 			if (newScale === lastScale && children && children.length) {
-				for (let i = 0; i < children.length; i++) {
-					const { start: cstart, t: ct, x: cx, y: cy } = children[i];
-					if (videoRef.current.currentTime >= cstart
-						&& videoRef.current.currentTime < cstart + ct) {
-						let modx = x -cx * wscale
-						let mody = y - cy * hscale
-						modx = (cstart + ct - videoRef.current.currentTime) / ct * Math.abs(modx)
-						mody = (cstart + ct - videoRef.current.currentTime) / ct * Math.abs(mody)
-						x = x + (modx > 0 ? -1 : 1) * modx
-						y = y + (modx > 0 ? -1 : 1) * mody
-						console.log('移动帧', x, y)
-						break
-					}
+				let { tIndex, tx, ty, } = renderFrameInfo.current
+				if (!children[tIndex]) return;
+				const { start: cstart, t: ct, x: cx, y: cy } = children[tIndex];
+				if (videoRef.current.currentTime >= cstart
+					&& videoRef.current.currentTime < cstart + ct) {
+					let modx = cx * wscale - tx * wscale
+					let mody = cy * hscale - ty * hscale
+					let modxScale = (1 - (cstart + ct - videoRef.current.currentTime) / ct ) * (modx)
+					let modyScale = (1 - (cstart + ct - videoRef.current.currentTime) / ct ) * (mody)
+					x = tx * wscale +  modxScale
+					y = ty * hscale +  modyScale
+					console.log('移动帧', tIndex, x, y, cx * wscale, cy * hscale , tx * wscale, ty * hscale, modx, mody)
+					renderFrameInfo.current.tReset = false
 				}
-			}
-			context.translate(x, y);
-			context.scale(newScale, newScale);
-			context.translate(-x, -y);
+				if (renderFrameInfo.current.tReset === false && videoRef.current.currentTime >= cstart + ct) {
+					renderFrameInfo.current.tIndex = tIndex + 1
+					renderFrameInfo.current.tx = cx
+					renderFrameInfo.current.ty = cy
+				}
+ 			}
+
+	
+			 context.translate(x, y);
+			 context.scale(newScale, newScale);
+			 context.translate(-x, -y);
+
 			if (videoRef.current.currentTime >= start + t) {
 				event = null
 				renderFrameInfo.current.event = event
