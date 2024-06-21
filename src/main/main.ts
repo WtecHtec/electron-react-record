@@ -403,7 +403,7 @@ function handleMessages() {
 			// 导出成功后，2s之后退出应用
 			setTimeout(() => {
 				openFolderInExplorer(folder)
-				app.quit()
+				app.hide()
 			}, 1 * 1000)
 			return filePath
 		})

@@ -336,6 +336,7 @@ function EditorApp() {
 		// 导出的时候还原宽高比率
 		renderFrameInfo.current.hscale = 1
 		renderFrameInfo.current.wscale = 1
+		renderFrameInfo.current.tIndex = 0
 		setCurrentCanvas(exportCanvasRef.current)
 		requestAnimationFrame(() => {
 			videoRef.current?.play()
@@ -348,6 +349,7 @@ function EditorApp() {
 		renderFrameInfo.current.event = null
 		renderFrameInfo.current.index = 0
 		renderFrameInfo.current.lastScale = 1
+		renderFrameInfo.current.tIndex = 0
 	}
 	const handleProgressBar = (progress: number) => {
 		// console.log(progress)
