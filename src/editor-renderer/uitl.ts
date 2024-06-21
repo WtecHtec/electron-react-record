@@ -45,14 +45,20 @@ export const getEffectFrames = (recordTimeInfo: any, evenFrames: any) => {
 						evenFrames[j].start = sec0
 						evenFrames[j].t = sec0 - item.end
 						item.end = sec0
-						const { x: x1, y: y1} = evenFrames[j]
-						const modx = Math.abs(x1 - lastx)
-						const mody = Math.abs(y1 - lasty)
-						if (modx >= 300 || mody >= 300) {
-							item.children.push(evenFrames[j])
-							lastx = x1
-							lasty = y1
-						}
+						item.children.push(evenFrames[j])
+						// const { x: x1, y: y1} = evenFrames[j]
+						// const modx = Math.abs(x1 - lastx)
+						// const mody = Math.abs(y1 - lasty)
+						// if (modx >= 300 || mody >= 300) {
+						// 	item.children.push(evenFrames[j])
+						// 	lastx = x1
+						// 	lasty = y1
+						// } else if (item.children.length 
+						// 	&& (modx < 300 || mody < 300)) {
+						// 	item.children[item.children.length - 1] = (evenFrames[j])
+						// 	lastx = x1
+						// 	lasty = y1
+						// }
 					}
 				}
 			}

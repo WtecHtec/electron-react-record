@@ -171,7 +171,7 @@
     "webpack-merge": "^5.9.0"
   },
   "build": {
-    "productName": "ElectronReact",
+    "productName": "Craft Record",
     "appId": "org.erb.ElectronReact",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
