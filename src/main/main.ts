@@ -30,6 +30,10 @@ import MenuBuilder from './menu';
 import { openFolderInExplorer, resolveHtmlPath, timestamp2Time } from './util';
 import { uIOhook, } from 'uiohook-napi'
 import fs from 'fs'
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('ffmpeg-static');
+console.log('ffmpegPath----', ffmpegPath)
+ffmpeg.setFfmpegPath(ffmpegPath);
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -222,6 +226,7 @@ function createEditorWindow() {
 
 	editorWin.on('closed', () => {
 		// editorWin?.close()
+		// editorWin?.destroy()
 		editorWin = null
 		recordWin?.close()
 		recordWin = null
@@ -368,6 +373,7 @@ function handleMessages() {
 	// 倒计时结束
 	ipcMain.on('count_down_end_render', () => {
 		maskWin?.hide()
+		maskWin?.destroy()
 		maskWin = null
 		try {
 			tray?.destroy()
@@ -397,19 +403,43 @@ function handleMessages() {
 	if (!HANLDE_MAP.includes('exprot-blob-render')) { 
 		HANLDE_MAP.push('exprot-blob-render')
 		ipcMain.handle('exprot-blob-render', async (_, {arrayBuffer, folder} ) => {
+			// Mp4Demux.demux(arrayBuffer)
 			const buffer = Buffer.from(arrayBuffer);  
-			const filePath = `${folder}/av-craft-${timestamp2Time(new Date().getTime())}.mp4`
-			fs.writeFileSync(filePath, buffer);
-			// 导出成功后，2s之后退出应用
+			const inputPath = './av-craft.webm'
+			const outputPath = `${folder}/av-craft-${timestamp2Time(new Date().getTime())}.mp4`
+			await exportMp4(buffer, inputPath, outputPath)
+			// 导出成功后，1s后打开文件夹
 			setTimeout(() => {
 				openFolderInExplorer(folder)
-				app.hide()
+				editorWin?.close()
+				// editorWin?.destroy()
+				editorWin = null
 			}, 1 * 1000)
-			return filePath
+			return outputPath
 		})
 	}
 }
 
+function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOrFileDescriptor, outputPath: unknown) {
+ return new Promise((resolve, reject) => {
+	fs.writeFileSync(inputPath, buffer);
+	ffmpeg(inputPath)
+	.videoFilters([
+		'eq=contrast=1.2:brightness=0.05:saturation=1.3:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
+		'hqdn3d=1.5:1.5:6.0:6.0' // 降噪
+	  ])
+		.output(outputPath)
+		.on('end', () => {
+			console.log('Conversion Finished');
+			resolve(outputPath)
+		})
+		.on('error', (err: any) => {
+			console.log(err);
+			resolve('')
+		})
+		.run();
+ })
+}
 app
   .whenReady()
   .then(() => {

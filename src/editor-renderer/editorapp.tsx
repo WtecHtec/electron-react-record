@@ -1,11 +1,11 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-import loadMP4Module from 'mp4-wasm/build/mp4';
+import { useEffect, useRef, useState } from 'react';
 import GlobalLoading from '../compents/globalloading';
 import './editorapp.css'
 import FlatProgressBar from '../compents/progressbar';
 import { formatSecondsToHMS } from '../renderer/uitl';
 import { getEffectFrames } from './uitl';
-let addFramesHandlers: Promise<any>[] = []
+
+// let addFramesHandlers: Promise<any>[] = []
 let savaFolder:string
 const MIN_FRAME_MOD_TIME = 0.8
 const SCALE_DEFAULT = 1.2
@@ -18,6 +18,18 @@ function EditorApp() {
 	const [currentCanvas, setCurrentCanvas] = useState<HTMLCanvasElement | null>()
 	const perviewCanvasRef = useRef<HTMLCanvasElement>(null)
 	const exportCanvasRef = useRef<HTMLCanvasElement>(null)
+	const [exportStatus, setExportStatus] = useState(false)
+	const videoFrameRef = useRef({
+		previousFrameData: null,
+        frameCount: 0,
+        startTime: 0,
+		frameRate: 30,
+	})
+	const exportCanvasSetRef = useRef<{
+		recorder: any
+	}>({
+		recorder:  null
+	})
 	let mp4WasmRef = useRef<WasmMP4 | null>(null)
 	// 记录缩放比率
 	const perviewRef = useRef({
@@ -121,6 +133,9 @@ function EditorApp() {
 	// 将video帧绘制到canvas【缩放、移动】
 	const drawVideoFrame = async () => {
 		if (!currentCanvas || !videoRef || !videoRef.current) return;
+		if (!videoFrameRef.current.startTime && performance.now()) {
+			videoFrameRef.current.startTime = performance.now();
+		}
 		const canvasWidth = currentCanvas.width
 		const canvasHeight = currentCanvas.height
 		const context = currentCanvas?.getContext('2d')
@@ -228,14 +243,20 @@ function EditorApp() {
 		context!.restore()
 		// console.log('videoInfo.status===', perviewRef.current.playstatus)
 		if (!perviewRef.current.playstatus) return
-		if (mp4WasmRef.current) {
-			const addFrame = async (currentCanvas: HTMLCanvasElement, encode: WasmMP4) => {
-				const bitmap = await createImageBitmap(currentCanvas)
-				await encode.addFrame(bitmap);
-			}
-			addFramesHandlers.push(addFrame(currentCanvas, mp4WasmRef.current))
+		// if (mp4WasmRef.current) {
+		// 	const addFrame = async (currentCanvas: HTMLCanvasElement, encode: WasmMP4) => {
+		// 		const bitmap = await createImageBitmap(currentCanvas)
+		// 		await encode.addFrame(bitmap);
+		// 	}
+		// 	addFramesHandlers.push(addFrame(currentCanvas, mp4WasmRef.current))
+			
+		// }
+		if (videoRef.current.currentTime < videoRef.current.duration) {
+			requestAnimationFrame(drawVideoFrame)
+		} else {
+			setExportStatus(true)
 		}
-		requestAnimationFrame(drawVideoFrame)
+		
 	}
 
 	const handelPlay = () => {
@@ -271,23 +292,11 @@ function EditorApp() {
 					export: 0,
 				})
 			}
-			if (mp4WasmRef.current && addFramesHandlers.length) {
-				Promise.all(addFramesHandlers).then( async (datas) => {
-					addFramesHandlers = []
-					requestAnimationFrame(async () => {
-						const buf = await mp4WasmRef.current!.end();
-						mp4WasmRef.current = null
-						// await mp4WasmRef.current!.flush();
-						await window.electron.ipcRenderer.invoke('exprot-blob-render',  { arrayBuffer: buf, folder: savaFolder }); 
-						// const url = URL.createObjectURL(new Blob([buf], { type: "video/mp4" }));
-						// console.log('buf--', buf, url)
-						setVideoInfo({
-							loaded: true,
-							status: false,
-							export: 2,
-						})
-					})
-				})
+			//  关闭
+			try {
+				exportCanvasSetRef.current.recorder?.stop();
+			} catch (error) {
+				console.log(error)
 			}
 			initRenderFrameInfo()
 		}
@@ -322,13 +331,6 @@ function EditorApp() {
 			export: 1,
 		}) 
 		perviewRef.current.playstatus = true
-		const MP4 = await loadMP4Module();
-		const encoder = MP4.createWebCodecsEncoder({
-			width: exportCanvasRef.current?.width,
-			height: exportCanvasRef.current?.height,
-			fps: 60
-		});
-		mp4WasmRef.current = encoder;
 		if (videoRef.current) {
 			videoRef.current.currentTime = 0
 		}
@@ -339,6 +341,32 @@ function EditorApp() {
 		renderFrameInfo.current.tIndex = 0
 		setCurrentCanvas(exportCanvasRef.current)
 		requestAnimationFrame(() => {
+			const  stream  = exportCanvasRef.current?.captureStream(60);
+			exportCanvasSetRef.current.recorder = new MediaRecorder(stream as MediaStream, {
+                mimeType: 'video/webm; codecs=vp8',
+            });
+			const chunks: BlobPart[] | undefined = [];
+			exportCanvasSetRef.current.recorder.ondataavailable = (event: any) => {
+                if ( event.data.size > 0) {
+                    chunks.push(event.data);
+                }
+            };
+			exportCanvasSetRef.current.recorder.onstop = async () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+				const url = URL.createObjectURL(blob);
+				console.log('url--', url) 
+				const arrayBuffer = await blob.arrayBuffer();
+				await window.electron.ipcRenderer.invoke('exprot-blob-render',  { arrayBuffer: arrayBuffer, folder: savaFolder }); 
+				// const demuxer = new MP4Demux(arrayBuffer);
+                // await demuxer.demux();
+                // const videoTrack = demuxer.getVideoTracks()[0];
+				setVideoInfo({
+					loaded: true,
+					status: false,
+					export: 2,
+				})
+			}
+			exportCanvasSetRef.current.recorder.start();
 			videoRef.current?.play()
 			// mp4WasmRef.current!.start()
 		})
@@ -370,7 +398,7 @@ function EditorApp() {
 						{formatSecondsToHMS( videoPlay.duration * videoPlay.progress / 100 || 0 )}/{formatSecondsToHMS( videoPlay.duration || 0)}
 						</div>
 				</div>
-				<button className="button bl" onClick={handleExport}> 导出 </button>
+				<button className="button bl"  onClick={handleExport}> 导出 </button>
 			</div>
 		</div>
 		<video controls ref={videoRef} className="video-el" style={{ width: '760px',}} />

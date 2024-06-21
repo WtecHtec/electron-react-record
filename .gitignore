@@ -25,3 +25,5 @@ dist-electron
 *.sw?
 release/build
 *.zip
+*.webm
+*.lock
