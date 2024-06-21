@@ -1,6 +1,6 @@
 import  { useRef, useState, useEffect } from 'react';  
 import './index.css'
-function FlatProgressBar({ initialValue = 0, value = 0, onChange = (p: number)=> {} }) {
+function FlatProgressBar({ initialValue = 0, value = 0, isDrag=false, onChange = (p: number)=> {} }) {
   const [progress, setProgress] = useState(initialValue);  
   const progressBarRef = useRef<HTMLDivElement>(null);  
   const handleRef = useRef<HTMLDivElement>(null);  
@@ -10,7 +10,7 @@ function FlatProgressBar({ initialValue = 0, value = 0, onChange = (p: number)=>
 	}, [value])
   // 拖拽逻辑  
   const handleDrag = (e: any) => {  
-		if (!progressBarRef.current) return
+		if (!progressBarRef.current || !isDrag) return
     const rect = (progressBarRef.current as any)?.getBoundingClientRect();  
     const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));  
     setProgress(percent * 100);  

@@ -27,3 +27,4 @@ release/build
 *.zip
 *.webm
 *.lock
+*-lock.json

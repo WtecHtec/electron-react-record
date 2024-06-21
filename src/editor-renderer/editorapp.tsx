@@ -380,16 +380,16 @@ function EditorApp() {
 		renderFrameInfo.current.tIndex = 0
 	}
 	const handleProgressBar = (progress: number) => {
-		// console.log(progress)
-		const value = progress * videoRef.current!.duration / 100
-		videoRef.current!.currentTime = isNaN(value) ? 0 : value
+		console.log(progress)
+		// const value = progress * videoRef.current!.duration / 100
+		// videoRef.current!.currentTime = isNaN(value) ? 0 : value
 	}
   return <>
 		<GlobalLoading isLoading={!videoInfo.loaded} message="加载中..."/>
 		<GlobalLoading isLoading={videoInfo.export !== 0} message={ videoInfo.export === 1 ?'导出中...' : '导出完成'}/>
 	 	<div style={{ opacity: videoInfo.export === 0 && videoInfo.loaded ? 1 : 0  }}>
 			<canvas ref={perviewCanvasRef}></canvas>
-			<FlatProgressBar initialValue={0} value={videoPlay.progress} onChange={handleProgressBar}></FlatProgressBar>
+			<FlatProgressBar initialValue={0} value={videoPlay.progress} isDrag={false} onChange={handleProgressBar}></FlatProgressBar>
 			<div className="video-hanlde">
 				<div className="video-hanlde-left">
 					<button className="button" onClick={handelPlay} style={{ display: videoInfo.loaded ? 'block' : 'none', marginRight: '10px'}}>  {
