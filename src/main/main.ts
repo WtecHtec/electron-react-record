@@ -210,6 +210,7 @@ function createEditorWindow() {
 		// frame: true, // 无边框
 		resizable: false,
 		webPreferences: {
+			backgroundThrottling: false,
 			webSecurity: false, // 禁用相同来源策略  
 			preload: app.isPackaged
 			? path.join(__dirname, 'preload.js')
@@ -218,7 +219,7 @@ function createEditorWindow() {
 	})
 
 	// Test active push message to Renderer-process.
-	editorWin.webContents.on('did-finish-load', () => {
+	editorWin.webContents.on('did-finish-load', () => { 
 		editorWin?.webContents.send('record_url_main',  { blobUrl, mouseEventDatas, recordTimeInfo })
 		// 打开调试面板
 		editorWin?.webContents.openDevTools()
@@ -404,16 +405,16 @@ function handleMessages() {
 		HANLDE_MAP.push('exprot-blob-render')
 		ipcMain.handle('exprot-blob-render', async (_, {arrayBuffer, folder} ) => {
 			// Mp4Demux.demux(arrayBuffer)
-			const buffer = Buffer.from(arrayBuffer);  
-			const inputPath = './av-craft.webm'
+			const buffer = Buffer.from((arrayBuffer));  
+			const inputPath = 'av-craft.webm'
 			const outputPath = `${folder}/av-craft-${timestamp2Time(new Date().getTime())}.mp4`
 			await exportMp4(buffer, inputPath, outputPath)
 			// 导出成功后，1s后打开文件夹
 			setTimeout(() => {
 				openFolderInExplorer(folder)
-				editorWin?.close()
+				// editorWin?.close()
 				// editorWin?.destroy()
-				editorWin = null
+				// editorWin = null
 			}, 1 * 1000)
 			return outputPath
 		})
@@ -422,22 +423,36 @@ function handleMessages() {
 
 function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOrFileDescriptor, outputPath: unknown) {
  return new Promise((resolve, reject) => {
-	fs.writeFileSync(inputPath, buffer);
-	ffmpeg(inputPath)
-	.videoFilters([
-		'eq=contrast=1.2:brightness=0.05:saturation=1.3:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
-		'hqdn3d=1.5:1.5:6.0:6.0' // 降噪
-	  ])
-		.output(outputPath)
-		.on('end', () => {
-			console.log('Conversion Finished');
-			resolve(outputPath)
-		})
-		.on('error', (err: any) => {
-			console.log(err);
-			resolve('')
-		})
-		.run();
+	fs.writeFile(inputPath, buffer, () => {
+		console.log('inputPath---', inputPath)
+		ffmpeg()
+			.input(inputPath)
+			.inputOptions('-vsync 1') // 确保输入的时间戳同步
+			.videoFilters([
+				'eq=contrast=1.2:brightness=0.05:saturation=1.3:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
+			])
+			.outputOptions([
+				'-c:v libx264', // 设置视频编解码器
+			// 	'-c:a aac', // 设置音频编解码器
+				'-preset slow', // 设置较慢的预设以提高编码质量
+				'-crf 18', // 设置恒定质量因子，值越低质量越高（范围：0-51，默认23）
+				'-movflags +faststart', // 优化 mp4 播放
+				'-pix_fmt yuv420p', // 设置像素格式
+				// '-r 30',
+				'-vsync 1' // 保持输出的时间戳同步
+			])
+			.output(outputPath)
+			.on('end', () => {
+				console.log('Conversion Finished 0');
+				resolve(outputPath)
+			})
+			.on('error', (err: any) => {
+				console.log(err);
+				resolve('')
+			})
+			.run();
+	});
+
  })
 }
 app

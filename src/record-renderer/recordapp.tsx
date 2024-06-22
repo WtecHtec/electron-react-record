@@ -42,7 +42,7 @@ function RecordApp() {
           },
         } as any);
 
-        const options = { mimeType: 'video/webm; codecs=vp9' };
+        const options = { mimeType: 'video/webm;codecs=h264' };
         const mediaRecorder = new MediaRecorder(mediaStream, options);
 
         mediaRecorder.onstart = () => {
@@ -60,7 +60,7 @@ function RecordApp() {
 
         mediaRecorder.onstop = async () => {
           const blob = new Blob(recordRef.current.recordedChunks, {
-            type: 'video/webm',
+            type: 'video/webm;codecs=h264',
           });
           const url = URL.createObjectURL(blob);
           // downloadVideo(url);

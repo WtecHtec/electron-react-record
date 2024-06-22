@@ -18,7 +18,12 @@ function EditorApp() {
 	const [currentCanvas, setCurrentCanvas] = useState<HTMLCanvasElement | null>()
 	const perviewCanvasRef = useRef<HTMLCanvasElement>(null)
 	const exportCanvasRef = useRef<HTMLCanvasElement>(null)
-	const [exportStatus, setExportStatus] = useState(false)
+	const currentCanvasRef = useRef<{
+		cnavas: any
+	}>({
+		cnavas: null
+	})
+	// const [exportStatus, setExportStatus] = useState(false)
 	const videoFrameRef = useRef({
 		previousFrameData: null,
         frameCount: 0,
@@ -86,7 +91,8 @@ function EditorApp() {
 			// 设置比例
 			renderFrameInfo.current.wscale = wscale
 			renderFrameInfo.current.hscale = hscale
-			perviewCanvasRef.current && setCurrentCanvas(perviewCanvasRef.current)
+			// perviewCanvasRef.current && setCurrentCanvas(perviewCanvasRef.current)
+			perviewCanvasRef.current && (currentCanvasRef.current.cnavas = perviewCanvasRef.current)
 			requestAnimationFrame(() => {
 				videoRef.current?.play()
 			})
@@ -132,6 +138,7 @@ function EditorApp() {
 
 	// 将video帧绘制到canvas【缩放、移动】
 	const drawVideoFrame = async () => {
+		const { cnavas: currentCanvas } = currentCanvasRef.current;
 		if (!currentCanvas || !videoRef || !videoRef.current) return;
 		if (!videoFrameRef.current.startTime && performance.now()) {
 			videoFrameRef.current.startTime = performance.now();
@@ -254,7 +261,7 @@ function EditorApp() {
 		if (videoRef.current.currentTime < videoRef.current.duration) {
 			requestAnimationFrame(drawVideoFrame)
 		} else {
-			setExportStatus(true)
+			// setExportStatus(true)
 		}
 		
 	}
@@ -273,9 +280,10 @@ function EditorApp() {
 		perviewRef.current.playstatus = status
 		renderFrameInfo.current.hscale = perviewRef.current.hscale
 		renderFrameInfo.current.wscale = perviewRef.current.wscale
-		if (currentCanvas !== perviewCanvasRef.current) {
-			setCurrentCanvas(perviewCanvasRef.current)
-		}
+		currentCanvasRef.current.cnavas = perviewCanvasRef.current
+		// if (currentCanvas !== perviewCanvasRef.current) {
+		// 	setCurrentCanvas(perviewCanvasRef.current)
+		// }
 	}
 	useEffect(() => {
 		if (!videoRef.current) return
@@ -285,7 +293,7 @@ function EditorApp() {
 		}
 		const onStop = async () => {
 			perviewRef.current.playstatus = false
-			if (!mp4WasmRef.current) {
+			if (!exportCanvasSetRef.current.recorder) {
 				setVideoInfo({
 					loaded: true,
 					status: false,
@@ -309,14 +317,23 @@ function EditorApp() {
 				}
 			})
 		}
+		const pause = () => {
+			console.log('pause----')
+			if (exportCanvasSetRef.current.recorder) {
+				currentVideo.play()
+				console.log('继续播放')
+			}
+		}
 		currentVideo.addEventListener('play', onPlay)
 		currentVideo.addEventListener('ended', onStop)
 		currentVideo.addEventListener('timeupdate', updateScrubber)
+		currentVideo.addEventListener('pause', pause)
 		return () => {
 			if (currentVideo) {
 				currentVideo.removeEventListener('play', onPlay)
 				currentVideo.removeEventListener('ended', onStop)
 				currentVideo.removeEventListener('timeupdate', updateScrubber)
+				currentVideo.removeEventListener('pause', pause)
 			}
 		}
 	}, [drawVideoFrame]);
@@ -332,6 +349,7 @@ function EditorApp() {
 		}) 
 		perviewRef.current.playstatus = true
 		if (videoRef.current) {
+			videoRef.current.pause()
 			videoRef.current.currentTime = 0
 		}
 		initRenderFrameInfo()
@@ -339,11 +357,12 @@ function EditorApp() {
 		renderFrameInfo.current.hscale = 1
 		renderFrameInfo.current.wscale = 1
 		renderFrameInfo.current.tIndex = 0
-		setCurrentCanvas(exportCanvasRef.current)
+		// setCurrentCanvas(exportCanvasRef.current)
+		currentCanvasRef.current.cnavas = exportCanvasRef.current
 		requestAnimationFrame(() => {
-			const  stream  = exportCanvasRef.current?.captureStream(60);
+			const  stream  = exportCanvasRef.current?.captureStream();
 			exportCanvasSetRef.current.recorder = new MediaRecorder(stream as MediaStream, {
-                mimeType: 'video/webm; codecs=vp8',
+                mimeType: 'video/webm;codecs=h264',
             });
 			const chunks: BlobPart[] | undefined = [];
 			exportCanvasSetRef.current.recorder.ondataavailable = (event: any) => {
@@ -352,22 +371,44 @@ function EditorApp() {
                 }
             };
 			exportCanvasSetRef.current.recorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-				const url = URL.createObjectURL(blob);
-				console.log('url--', url) 
-				const arrayBuffer = await blob.arrayBuffer();
-				await window.electron.ipcRenderer.invoke('exprot-blob-render',  { arrayBuffer: arrayBuffer, folder: savaFolder }); 
+        const blob = new Blob(chunks, { type: 'video/webm;codecs=h264' });
+				const blobUrl = URL.createObjectURL(blob);
+				console.log('url--', blobUrl) 
+
+				fetch(blobUrl)  
+					.then(response => response.blob())  
+					.then(blob => {  
+						// 将 Blob 对象转换为 ArrayBuffer，以便通过 IPC 发送  
+						return new Promise((resolve, reject) => {  
+							const reader = new FileReader();  
+							reader.onload = (event: any) => resolve(event.target.result);  
+							reader.onerror = (event: any)  => reject(event.error);  
+							reader.readAsArrayBuffer(blob);  
+						});  
+					})  
+					.then(async (arrayBuffer) => {  
+						// 将 ArrayBuffer 发送到主进程  
+						await window.electron.ipcRenderer.invoke('exprot-blob-render',  { arrayBuffer: arrayBuffer, folder: savaFolder }); 
+						setVideoInfo({
+							loaded: true,
+							status: false,
+							export: 2,
+						})
+						exportCanvasSetRef.current.recorder = null
+					})  
+					.catch(error => {  
+						console.error('Error fetching Blob:', error);  
+					});
+				// const arrayBuffer = await blob.arrayBuffer();
+				// await window.electron.ipcRenderer.invoke('exprot-blob-render',  { arrayBuffer: arrayBuffer, folder: savaFolder }); 
 				// const demuxer = new MP4Demux(arrayBuffer);
                 // await demuxer.demux();
                 // const videoTrack = demuxer.getVideoTracks()[0];
-				setVideoInfo({
-					loaded: true,
-					status: false,
-					export: 2,
-				})
 			}
 			exportCanvasSetRef.current.recorder.start();
-			videoRef.current?.play()
+			requestAnimationFrame(() => {
+				videoRef.current?.play()
+			})
 			// mp4WasmRef.current!.start()
 		})
 		// console.log('encoder---', encoder);
