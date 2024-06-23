@@ -28,11 +28,10 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { openFolderInExplorer, resolveHtmlPath, timestamp2Time } from './util';
-import { uIOhook, } from 'uiohook-napi'
+import { uIOhook, UiohookKey } from 'uiohook-napi'
 import fs from 'fs'
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
-console.log('ffmpegPath----', ffmpegPath)
 ffmpeg.setFfmpegPath(ffmpegPath);
 class AppUpdater {
   constructor() {
@@ -146,6 +145,7 @@ let tray: Tray | null; // 全局变量来持有 Tray 实例
 let maskWin: BrowserWindow | null; // 全局变量来持有 倒计时浮窗 实例
 let recordWin: BrowserWindow | null; // 全局变量来持有 录屏浮窗 实例
 let editorWin: BrowserWindow | null; // 全局变量来持有 视频编辑 实例
+let markWin: BrowserWindow | null; // 全局变量来持有 视频编辑 实例
 let blobUrl: string; // 全局变量来持有 录屏 结果
 const recordTimeInfo = {
 	startTime: 0, // 开始录制时间
@@ -154,27 +154,48 @@ const recordTimeInfo = {
 const mouseEventDatas: { type: string; x?: number; y?: number; time: number; }[] = []; // 鼠标、键盘事件数据
 const isMac = process.platform === "darwin";
 const HANLDE_MAP: string[] = []
+let recording = 0; // 录制状态 0:未录制 1: 录制中
+let marking = 0; // 标注状态 0:未标注 1: 标注中
 
+function handleOpenMark() {
+	console.log("Open Mark");
+	tray?.destroy()
+	tray = null
+	createTray(1, 1)
+	createMarkWin()
+}
+
+function handleCloseMark() {
+	console.log("Close Mark");
+	tray?.destroy()
+	tray = null
+	createTray(1, 0)
+	markWin?.close()
+	markWin = null
+}
 /**
  * 系统托盘
  * @param init 
  * @returns 
  */
-function createTray(init = 0) {
+function createTray(init = 0, mark = 0) {
 	if (tray) {
 		console.log("Tray already created!");
 		return
 	}
+	recording = init
+	marking = mark
 	tray = new Tray(path.join(RESOURCES_PATH,  init === 0 ? 'tray-icon-start.png' : 'tray-icon-stop.png'));
-	const startItem = {
+	const startItem = [{
 		label: 'Start Record',
 		click () {
 			mouseEventDatas.length = 0
 			// eslint-disable-next-line no-use-before-define
 			createCountDownMaskWin();
 		}
-	}
-	const stopItem = {
+	},
+	]
+	const stopItem = [{
 		label: 'Stop Record',
 		click () {
 			console.log("Stop Record");
@@ -184,17 +205,32 @@ function createTray(init = 0) {
 			if (recordWin) {
 				recordWin?.webContents.send('end_record_main')
 			}
+			if (markWin) {
+				markWin?.close()
+			}
+			// markWin = null
+		}
+	},
+  mark === 0 ?	{
+		label: '(W)Mark',
+		click () {
+			handleOpenMark()
+		}
+	} : {
+		label: '(W)Finish Mark',
+		click () {
+			handleCloseMark()
 		}
 	}
-	const contextMenu = Menu.buildFromTemplate([
-		init === 0 ? startItem : stopItem,
+]
+	const contextMenu = Menu.buildFromTemplate(
+		(init === 0 ? [...startItem] : [...stopItem]).concat(
 		{
 			label: 'Quit',
 			click () {
 				app.quit();
 			}
-		}
-	]);
+		}));
 
 	tray.setToolTip('Record Craft');
 	tray.setContextMenu(contextMenu);
@@ -296,7 +332,7 @@ function createRecordWin() {
 
 	recordWin?.setContentProtection(true)
 	// 设置窗口始终在最前面
-	recordWin.setAlwaysOnTop(true, "screen-saver"); // - 2 -
+	recordWin.setAlwaysOnTop(true, "screen-saver", 1); // - 2 -
 	// 设置窗口在所有工作区都可见
 	recordWin.setVisibleOnAllWorkspaces(true); // - 3 -
 	recordWin.loadURL(resolveHtmlPath('record.html'));
@@ -352,6 +388,34 @@ function createCountDownMaskWin() {
 	maskWin.setVisibleOnAllWorkspaces(true); // - 3 -
 }
 
+function createMarkWin () {
+	if (maskWin) {
+		return;
+	}
+	if (isMac) {
+		app.dock.hide(); // - 1 -
+	}
+	markWin = new BrowserWindow({
+		frame: true, // 无边框
+		transparent: true, // 透明窗口
+		alwaysOnTop: true, // 窗口总是显示在最前面
+		webPreferences: {
+			preload: app.isPackaged
+			? path.join(__dirname, 'preload.js')
+			: path.join(__dirname, '../../.erb/dll/preload.js'),
+		},
+	})
+	markWin.loadURL(resolveHtmlPath('mark.html'));
+	// maskWin.maximize(); // 全屏显示窗口
+	// 设置窗口始终在最前面
+	markWin.setAlwaysOnTop(true, "status", 2); // - 2 -
+	// 设置窗口在所有工作区都可见
+	markWin.setVisibleOnAllWorkspaces(true); // - 3 -
+	markWin.maximize(); // 全屏显示窗口
+	markWin.on('closed', () => {
+		markWin = null
+	})
+}
 
 function handleMessages() {
 	// 结束录制
@@ -365,6 +429,10 @@ function handleMessages() {
 		tray = null
 		createTray(0)
 		recordTimeInfo.endTime = new Date().getTime()
+		if (markWin) {
+			markWin.close()
+			markWin = null
+		}
 	})
 	// 开始录制、开启记录鼠标
 	ipcMain.on('record_mouse_render', () => {
@@ -479,11 +547,15 @@ app
 			})
 		})
 
-		uIOhook.on('keydown', () => {
+		uIOhook.on('keydown', (e) => {
 			mouseEventDatas.push({
 				type: 'keydown',
 				time: new Date().getTime(),
 			})
+			if (recording === 1 && e.keycode === UiohookKey.W) {
+				marking === 0 ?
+			 	handleOpenMark() : handleCloseMark()
+			}
 		})
 
 		uIOhook.on('keyup', () => {
@@ -492,7 +564,7 @@ app
 				time: new Date().getTime(),
 			})
 		})
-
+    //  createMarkWin();
 		createTray();
 		handleMessages();
     // createWindow();

@@ -10,6 +10,7 @@ const srcRendererPath = path.join(srcPath, 'renderer');
 const srcCountDownRendererPath = path.join(srcPath, 'countdown-renderer');
 const srcRecordRendererPath = path.join(srcPath, 'record-renderer');
 const srcEditorRendererPath = path.join(srcPath, 'editor-renderer');
+const srcMarkRendererPath = path.join(srcPath, 'mark-renderer');
 
 const releasePath = path.join(rootPath, 'release');
 const appPath = path.join(releasePath, 'app');
@@ -41,4 +42,5 @@ export default {
   srcCountDownRendererPath,
   srcRecordRendererPath,
   srcEditorRendererPath,
+	srcMarkRendererPath,
 };

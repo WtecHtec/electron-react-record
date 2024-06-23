@@ -83,6 +83,11 @@ const configuration: webpack.Configuration = {
       'webpack/hot/only-dev-server',
       path.join(webpackPaths.srcEditorRendererPath, 'index.tsx'),
     ],
+		mark: [
+      `webpack-dev-server/client?http://localhost:${port}/dist`,
+      'webpack/hot/only-dev-server',
+      path.join(webpackPaths.srcMarkRendererPath, 'index.tsx'),
+    ],
   },
 
   // output: {
@@ -250,6 +255,21 @@ const configuration: webpack.Configuration = {
       isDevelopment: process.env.NODE_ENV !== 'production',
       nodeModules: webpackPaths.appNodeModulesPath,
       chunks: ['editor'],
+    }),
+
+		new HtmlWebpackPlugin({
+      filename: path.join('mark.html'),
+      template: path.join(webpackPaths.srcEditorRendererPath, 'index.ejs'),
+      minify: {
+        collapseWhitespace: true,
+        removeAttributeQuotes: true,
+        removeComments: true,
+      },
+      isBrowser: false,
+      env: process.env.NODE_ENV,
+      isDevelopment: process.env.NODE_ENV !== 'production',
+      nodeModules: webpackPaths.appNodeModulesPath,
+      chunks: ['mark'],
     }),
   ],
 
