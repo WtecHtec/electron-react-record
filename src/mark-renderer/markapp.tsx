@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
-import './recordapp.css';
+import './markapp.css';
 
 // 初始化画笔状态  
 let isDrawing = false;  

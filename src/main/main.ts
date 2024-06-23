@@ -332,7 +332,7 @@ function createRecordWin() {
 
 	recordWin?.setContentProtection(true)
 	// 设置窗口始终在最前面
-	recordWin.setAlwaysOnTop(true, "screen-saver", 1); // - 2 -
+	recordWin.setAlwaysOnTop(true, "screen-saver"); // - 2 -
 	// 设置窗口在所有工作区都可见
 	recordWin.setVisibleOnAllWorkspaces(true); // - 3 -
 	recordWin.loadURL(resolveHtmlPath('record.html'));
@@ -381,7 +381,7 @@ function createCountDownMaskWin() {
 	// }
 	// console.log(resolveHtmlPath('countdown.html'))
 	maskWin.loadURL(resolveHtmlPath('countdown.html'));
-	// maskWin.maximize(); // 全屏显示窗口
+	maskWin.maximize(); // 全屏显示窗口
 	// 设置窗口始终在最前面
 	maskWin.setAlwaysOnTop(true, "screen-saver"); // - 2 -
 	// 设置窗口在所有工作区都可见
@@ -406,12 +406,12 @@ function createMarkWin () {
 		},
 	})
 	markWin.loadURL(resolveHtmlPath('mark.html'));
-	// maskWin.maximize(); // 全屏显示窗口
+	markWin.maximize(); // 全屏显示窗口
 	// 设置窗口始终在最前面
-	markWin.setAlwaysOnTop(true, "status", 2); // - 2 -
+	markWin.setAlwaysOnTop(true, "screen-saver", 2); // - 2 -
 	// 设置窗口在所有工作区都可见
 	markWin.setVisibleOnAllWorkspaces(true); // - 3 -
-	markWin.maximize(); // 全屏显示窗口
+	// markWin.maximize(); // 全屏显示窗口
 	markWin.on('closed', () => {
 		markWin = null
 	})
@@ -552,7 +552,7 @@ app
 				type: 'keydown',
 				time: new Date().getTime(),
 			})
-			if (recording === 1 && e.keycode === UiohookKey.W) {
+			if (recording === 1 && e.keycode === UiohookKey.Shift) {
 				marking === 0 ?
 			 	handleOpenMark() : handleCloseMark()
 			}
