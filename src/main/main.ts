@@ -299,7 +299,7 @@ function createRecordWin() {
 
 	// 设置窗口的宽度和高度
 	const windowWidth = 120;
-	const windowHeight = 120;
+	const windowHeight = 92;
 	// app.commandLine.appendSwitch('disable-features', 'IOSurfaceCapturer,DesktopCaptureMacV2')
 	recordWin = new BrowserWindow({
 		width: windowWidth,
@@ -497,7 +497,7 @@ function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOr
 			.input(inputPath)
 			.inputOptions('-vsync 1') // 确保输入的时间戳同步
 			.videoFilters([
-				'eq=contrast=1.2:brightness=0.05:saturation=1.3:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
+				'eq=contrast=1.2:brightness=0.05:saturation=1.1:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
 			])
 			.outputOptions([
 				'-c:v libx264', // 设置视频编解码器
