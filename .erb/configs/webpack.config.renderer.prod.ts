@@ -25,12 +25,18 @@ const configuration: webpack.Configuration = {
 
   target: ['web', 'electron-renderer'],
 
-  entry: [path.join(webpackPaths.srcRendererPath, 'index.tsx')],
+  entry: {
+    main: path.join(webpackPaths.srcRendererPath, 'index.tsx'),
+    countdown: path.join(webpackPaths.srcCountDownRendererPath, 'index.tsx'),
+    record: path.join(webpackPaths.srcRecordRendererPath, 'index.tsx'),
+    editor: path.join(webpackPaths.srcEditorRendererPath, 'index.tsx'),
+    mark: path.join(webpackPaths.srcMarkRendererPath, 'index.tsx'),
+  },
 
   output: {
     path: webpackPaths.distRendererPath,
     publicPath: './',
-    filename: 'renderer.js',
+    filename: '[name].js',
     library: {
       type: 'umd',
     },
@@ -112,7 +118,7 @@ const configuration: webpack.Configuration = {
     }),
 
     new MiniCssExtractPlugin({
-      filename: 'style.css',
+      filename: '[name].css',
     }),
 
     new BundleAnalyzerPlugin({
@@ -121,7 +127,7 @@ const configuration: webpack.Configuration = {
     }),
 
     new HtmlWebpackPlugin({
-      filename: 'index.html',
+      filename: 'mian.html',
       template: path.join(webpackPaths.srcRendererPath, 'index.ejs'),
       minify: {
         collapseWhitespace: true,
@@ -130,6 +136,59 @@ const configuration: webpack.Configuration = {
       },
       isBrowser: false,
       isDevelopment: false,
+      chunks: ['main'],
+    }),
+    
+    new HtmlWebpackPlugin({
+      filename: 'countdown.html',
+      template: path.join(webpackPaths.srcCountDownRendererPath, 'index.ejs'),
+      minify: {
+        collapseWhitespace: true,
+        removeAttributeQuotes: true,
+        removeComments: true,
+      },
+      isBrowser: false,
+      isDevelopment: false,
+      chunks: ['countdown'],
+    }),
+
+    new HtmlWebpackPlugin({
+      filename: 'record.html',
+      template: path.join(webpackPaths.srcRecordRendererPath, 'index.ejs'),
+      minify: {
+        collapseWhitespace: true,
+        removeAttributeQuotes: true,
+        removeComments: true,
+      },
+      isBrowser: false,
+      isDevelopment: false,
+      chunks: ['record'],
+    }),
+
+    new HtmlWebpackPlugin({
+      filename: 'editor.html',
+      template: path.join(webpackPaths.srcEditorRendererPath, 'index.ejs'),
+      minify: {
+        collapseWhitespace: true,
+        removeAttributeQuotes: true,
+        removeComments: true,
+      },
+      isBrowser: false,
+      isDevelopment: false,
+      chunks: ['editor'],
+    }),
+
+    new HtmlWebpackPlugin({
+      filename: 'mark.html',
+      template: path.join(webpackPaths.srcMarkRendererPath, 'index.ejs'),
+      minify: {
+        collapseWhitespace: true,
+        removeAttributeQuotes: true,
+        removeComments: true,
+      },
+      isBrowser: false,
+      isDevelopment: false,
+      chunks: ['mark'],
     }),
 
     new webpack.DefinePlugin({
