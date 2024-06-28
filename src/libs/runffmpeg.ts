@@ -12,7 +12,7 @@ export default function runffmpeg(ffmpeg: any, inputPath: any, outputPath: any) 
     globalLogger.info('ffmpegPath command: ' + command);
     return new Promise(async (resolve, reject) => {
             globalLogger.info('ffmpegPath command run: ' + command);
-            exec(command, (error, stdout, stderr) => {
+            exec(command, (error: { message: string; stderr: any; }, stdout: string, stderr: { message: string; }) => {
                 if (error) {
                     globalLogger.info('ffmpegPath command error: ' + error.message);
                 //   console.error(`执行命令时发生错误: ${error.message}`);

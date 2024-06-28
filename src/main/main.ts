@@ -31,7 +31,7 @@ import { openFolderInExplorer, resolveHtmlPath, timestamp2Time } from './util';
 import { uIOhook, UiohookKey } from 'uiohook-napi'
 import fs from 'fs'
 import globalLogger from './logger';
-import ffmpegSatic from './ffmpeg-static-electron/index';
+import ffmpegSatic from '../libs/ffmpeg-static-electron';
 // const ffmpegSatic = require('ffmpeg-static-electron');
 import runffmpeg from '../libs/runffmpeg';
 // import ffmpeg from 'fluent-ffmpeg';
@@ -39,7 +39,7 @@ import runffmpeg from '../libs/runffmpeg';
 // const ffmpegPath = require('ffmpeg-static');
 // console.log('ffmpegPath', ffmpeg, ffmpegSatic.path)
 // ffmpeg.setFfmpegPath(ffmpegSatic.path);
-globalLogger.info('ffmpegPath' + ffmpegSatic);
+
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -87,7 +87,8 @@ const RESOURCES_PATH = app.isPackaged
 const getAssetPath = (...paths: string[]): string => {
   return path.join(RESOURCES_PATH, ...paths);
 };
-
+console.log('ffmpegPath----' ,RESOURCES_PATH, ffmpegSatic(RESOURCES_PATH));
+globalLogger.info('ffmpegPath----' + ffmpegSatic(RESOURCES_PATH));
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const createWindow = async () => {
   if (isDebug) {
@@ -500,10 +501,10 @@ function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOr
  return new Promise((resolve, reject) => {
 	fs.writeFile(inputPath, buffer, async  () => {
 		console.log('inputPath---', inputPath)
-		globalLogger.info('ffmpegPath 路径' + ffmpegSatic);
+		globalLogger.info('ffmpegPath 路径' +  ffmpegSatic(RESOURCES_PATH));
 		globalLogger.info('ffmpegPath 输入路径' + inputPath);
 		globalLogger.info('ffmpegPath 输出路径' + outputPath);
-		await runffmpeg(ffmpegSatic, inputPath, outputPath)
+		await runffmpeg( ffmpegSatic(RESOURCES_PATH), inputPath, outputPath)
 		resolve(outputPath)
 			// ffmpeg()
 			// .input(inputPath)

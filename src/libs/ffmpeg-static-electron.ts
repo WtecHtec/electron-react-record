@@ -1,3 +1,5 @@
+
+
 var os = require('os')
 var path = require('path')
 
@@ -19,9 +21,9 @@ if (platform === 'mac' && (arch !== 'x64' &&  arch !== 'arm64' )) {
   console.error('Unsupported architecture.')
   process.exit(1)
 }
-
-var ffmpegPath = path.join(
-  __dirname,
+var ffmpegPath = (dirname: string) => path.join(
+  dirname,
+  'ffmpeg-exe',
   'bin',
   platform,
   arch,
