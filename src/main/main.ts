@@ -481,7 +481,7 @@ function handleMessages() {
 		ipcMain.handle('exprot-blob-render', async (_, {arrayBuffer, folder} ) => {
 			// Mp4Demux.demux(arrayBuffer)
 			const buffer = Buffer.from((arrayBuffer));  
-			const inputPath = 'av-craft.webm'
+			const inputPath = path.join(app.getPath('userData'),  'av-craft.webm');
 			const outputPath = `${folder}/av-craft-${timestamp2Time(new Date().getTime()).replace(' ', '-')}.mp4`
 			await exportMp4(buffer, inputPath, outputPath)
 			// 导出成功后，1s后打开文件夹

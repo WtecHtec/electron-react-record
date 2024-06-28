@@ -2129,6 +2129,17 @@ module.exports = require("zlib");
 
 /***/ }),
 
+/***/ "copy-webpack-plugin":
+/*!**************************************!*\
+  !*** external "copy-webpack-plugin" ***!
+  \**************************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = copy-webpack-plugin;
+
+/***/ }),
+
 /***/ "fluent-ffmpeg":
 /*!********************************!*\
   !*** external "fluent-ffmpeg" ***!

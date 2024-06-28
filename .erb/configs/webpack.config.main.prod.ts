@@ -11,7 +11,7 @@ import baseConfig from './webpack.config.base';
 import webpackPaths from './webpack.paths';
 import checkNodeEnv from '../scripts/check-node-env';
 import deleteSourceMaps from '../scripts/delete-source-maps';
-
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 checkNodeEnv('production');
 deleteSourceMaps();
 
@@ -67,6 +67,11 @@ const configuration: webpack.Configuration = {
     new webpack.DefinePlugin({
       'process.type': '"browser"',
     }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'src/main/ffmpeg-static-electron/bin', to:  webpackPaths.distMainPath + '/bin'  }
+      ]
+    })
   ],
 
   /**
