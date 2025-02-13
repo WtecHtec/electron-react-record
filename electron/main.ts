@@ -5,6 +5,7 @@ import path from 'node:path'
 
 
 
+
 // const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -53,7 +54,7 @@ function createWindow() {
 	win.webContents.on('did-finish-load', () => {
 		win?.webContents.send('main-process-message', (new Date).toLocaleString())
 		// 打开调试面板
-		win?.webContents.openDevTools()
+		// win?.webContents.openDevTools()
 	})
 
 	if (VITE_DEV_SERVER_URL) {
@@ -282,4 +283,15 @@ function createEditorWindow() {
 
 app.whenReady().then(() => {
 	createTray()
+	// uIOhook.on('keydown', (e) => {
+	// 	if (e.keycode === UiohookKey.Q) {
+	// 		console.log('Hello!')
+	// 	}
+	
+	// 	if (e.keycode === UiohookKey.Escape) {
+	// 		process.exit(0)
+	// 	}
+	// })
+	
+	// uIOhook.start()
 })
