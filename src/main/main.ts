@@ -32,7 +32,10 @@ import { uIOhook, UiohookKey } from 'uiohook-napi'
 import fs from 'fs'
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
+import { createAppLoggerFile } from "./AppFile.js";
 
+import { globalLogger } from './logger'
+let logDirectory = createAppLoggerFile()
 console.log("ffmpegPath:::", ffmpegPath)
 // ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -46,6 +49,7 @@ if (app.isPackaged) {
   );
 }
 console.log("ffmpegPath:::", ffmpegPathResolved);
+globalLogger.info("ffmpegPath:::" + ffmpegPathResolved )
 ffmpeg.setFfmpegPath(ffmpegPathResolved);
 
 class AppUpdater {
@@ -273,7 +277,7 @@ function createEditorWindow() {
 	editorWin.webContents.on('did-finish-load', () => { 
 		editorWin?.webContents.send('record_url_main',  { blobUrl, mouseEventDatas, recordTimeInfo })
 		// 打开调试面板
-		editorWin?.webContents.openDevTools()
+		// editorWin?.webContents.openDevTools()
 	})
 
 	editorWin.on('closed', () => {
@@ -506,10 +510,12 @@ function handleMessages() {
 
 function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOrFileDescriptor, outputPath: unknown) {
  return new Promise((resolve, reject) => {
-	fs.writeFile(inputPath, buffer, () => {
-		console.log('inputPath---', inputPath)
+	let webmPath = path.join(logDirectory, "/" + inputPath) 
+	fs.writeFile(webmPath , buffer, () => {
+		console.log('inputPath---', webmPath)
+		globalLogger.info("inputPath:::" + webmPath )
 		ffmpeg()
-			.input(inputPath)
+			.input(webmPath)
 			// .inputOptions('-vsync 1') // 确保输入的时间戳同步
 			.videoFilters([
 				'eq=contrast=1.2:brightness=0.05:saturation=1.1:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
@@ -527,10 +533,12 @@ function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOr
 			.output(outputPath)
 			.on('end', () => {
 				console.log('Conversion Finished 0');
+				globalLogger.info("exportMp4 end :::" + outputPath )
 				resolve(outputPath)
 			})
 			.on('error', (err: any) => {
 				console.log(err);
+				globalLogger.info("exportMp4 error :::" + err )
 				resolve('')
 			})
 			.run();

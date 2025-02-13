@@ -102,7 +102,9 @@
     "ffmpeg-static": "^5.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.16.0"
+    "react-router-dom": "^6.16.0",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@electron/notarize": "^2.1.0",
@@ -235,7 +237,9 @@
       {
         "from": "node_modules/ffmpeg-static",
         "to": "node_modules/ffmpeg-static",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "publish": {
