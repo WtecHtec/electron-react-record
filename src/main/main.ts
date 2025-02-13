@@ -32,7 +32,22 @@ import { uIOhook, UiohookKey } from 'uiohook-napi'
 import fs from 'fs'
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
-ffmpeg.setFfmpegPath(ffmpegPath);
+
+console.log("ffmpegPath:::", ffmpegPath)
+// ffmpeg.setFfmpegPath(ffmpegPath);
+
+// 修改 ffmpeg 路径处理
+let ffmpegPathResolved = ffmpegPath;
+if (app.isPackaged) {
+  // 在打包环境中，需要调整路径
+  ffmpegPathResolved = ffmpegPath.replace(
+    'app.asar',
+    'app.asar.unpacked'
+  );
+}
+console.log("ffmpegPath:::", ffmpegPathResolved);
+ffmpeg.setFfmpegPath(ffmpegPathResolved);
+
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -495,19 +510,19 @@ function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOr
 		console.log('inputPath---', inputPath)
 		ffmpeg()
 			.input(inputPath)
-			.inputOptions('-vsync 1') // 确保输入的时间戳同步
+			// .inputOptions('-vsync 1') // 确保输入的时间戳同步
 			.videoFilters([
 				'eq=contrast=1.2:brightness=0.05:saturation=1.1:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
 			])
 			.outputOptions([
-				'-c:v libx264', // 设置视频编解码器
+				// '-c:v libx264', // 设置视频编解码器
 			// 	'-c:a aac', // 设置音频编解码器
-				'-preset slow', // 设置较慢的预设以提高编码质量
-				'-crf 18', // 设置恒定质量因子，值越低质量越高（范围：0-51，默认23）
+				// '-preset slow', // 设置较慢的预设以提高编码质量
+				// '-crf 18', // 设置恒定质量因子，值越低质量越高（范围：0-51，默认23）
 				'-movflags +faststart', // 优化 mp4 播放
-				'-pix_fmt yuv420p', // 设置像素格式
+				// '-pix_fmt yuv420p', // 设置像素格式
 				// '-r 30',
-				'-vsync 1' // 保持输出的时间戳同步
+				// '-vsync 1' // 保持输出的时间戳同步
 			])
 			.output(outputPath)
 			.on('end', () => {

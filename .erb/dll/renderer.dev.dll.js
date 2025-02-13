@@ -2160,6 +2160,17 @@ module.exports = require("util");
 "use strict";
 module.exports = require("zlib");
 
+/***/ }),
+
+/***/ "ffmpeg-static":
+/*!********************************!*\
+  !*** external "ffmpeg-static" ***!
+  \********************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = ffmpeg-static;
+
 /***/ })
 
 /******/ 	});

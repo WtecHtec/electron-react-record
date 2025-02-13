@@ -360,7 +360,7 @@ function EditorApp() {
 		// setCurrentCanvas(exportCanvasRef.current)
 		currentCanvasRef.current.cnavas = exportCanvasRef.current
 		requestAnimationFrame(() => {
-			const  stream  = exportCanvasRef.current?.captureStream();
+			const  stream  = exportCanvasRef.current?.captureStream(60);
 			exportCanvasSetRef.current.recorder = new MediaRecorder(stream as MediaStream, {
                 mimeType: 'video/webm;codecs=h264',
             });
