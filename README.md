@@ -17,4 +17,15 @@ node >= 20
 ```
 npm run start
 ```
+# 打包
+```
+npm run build:dll
+```
+
+```
+npm run build
+```
+```
+npm run package
+```
 
