@@ -277,7 +277,7 @@ function createEditorWindow() {
 	editorWin.webContents.on('did-finish-load', () => { 
 		editorWin?.webContents.send('record_url_main',  { blobUrl, mouseEventDatas, recordTimeInfo })
 		// 打开调试面板
-		editorWin?.webContents.openDevTools()
+		// editorWin?.webContents.openDevTools()
 	})
 
 	editorWin.on('closed', () => {
