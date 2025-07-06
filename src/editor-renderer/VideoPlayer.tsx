@@ -1365,6 +1365,8 @@ const VideoPlayer = (props) => {
 
                 videoRef.current?.play()
 
+
+
             })
 
 			
@@ -1577,8 +1579,9 @@ const VideoPlayer = (props) => {
                     });  
                 })  
                 .then(async (arrayBuffer) => {  
+                    // const vfscale = `-vf scale=${videoRef.current.videoWidth   * dpr}:${videoRef.current.videoHeight  * dpr}:flags=lanczos`
                     // 将 ArrayBuffer 发送到主进程  
-                    await window.electron.ipcRenderer.invoke('exprot-blob-render',  { arrayBuffer: arrayBuffer, folder: savaFolder }); 
+                    await window.electron.ipcRenderer.invoke('exprot-blob-render',  { arrayBuffer: arrayBuffer, folder: savaFolder  }); 
                
                 })  
                 .catch(error => {  
@@ -1702,8 +1705,20 @@ const VideoPlayer = (props) => {
 			const { type: optType } = scaleInfoRef.current;
 
 			const context = optType === 0
-				? plyrCanvasRef.current.getContext('2d')
-				: exprotCanvasRef.current.getContext('2d')
+				? plyrCanvasRef.current.getContext('2d',  {
+                    colorSpace: 'srgb',
+                    alpha: false,
+                    desynchronized: true, // 提高性能
+                    willReadFrequently: false
+                }
+                )
+				: exprotCanvasRef.current.getContext('2d',  {
+                    colorSpace: 'srgb',
+                    alpha: false,
+                    desynchronized: true, // 提高性能
+                    willReadFrequently: false
+                }
+                )
 
 			if (context) { // Add null check for context
 				context.imageSmoothingEnabled = false;
@@ -1867,32 +1882,32 @@ const VideoPlayer = (props) => {
 
                    // context.setTransform(1, 0, 0, 1, 0, 0); // 重置
 
-                   const rects = plyrCanvasRef.current?.getBoundingClientRect()
-                   const zoomWidth = rects?.width || 0
-                   const zoomHeight =rects?.height || 0
-                     // 原始裁剪区域
-                    let sx = x - zoomWidth / 2;
-                    let sy = y - zoomHeight / 2;
+                //    const rects = plyrCanvasRef.current?.getBoundingClientRect()
+                //    const zoomWidth = rects?.width || 0
+                //    const zoomHeight =rects?.height || 0
+                //      // 原始裁剪区域
+                //     let sx = x - zoomWidth / 2;
+                //     let sy = y - zoomHeight / 2;
 
-                    console.log('计算 newScale---- 2', zoomWidth, zoomHeight, sx, sy);
+                //     console.log('计算 newScale---- 2', zoomWidth, zoomHeight, sx, sy);
 
                     // 🚧 限制裁剪区域在视频范围内
                      // 四种情况
-                    if (sx < 0) sx = x;
-                    if (sy < 0) sy = y;
+                    // if (sx < 0) sx = x;
+                    // if (sy < 0) sy = y;
                     // if (sx + cw > videoWidth) sx = videoWidth - zoomWidth;
                     // if (sy + zoomHeight > videoHeight) sy = videoHeight - zoomHeight;
 
                    
-                    if (sx  > 0) {
-                        sx =  zoomWidth - x
-                    }
+                    // if (sx  > 0) {
+                    //     sx =  zoomWidth - x
+                    // }
 
-                    if (sy  > 0) {
-                        sy =  zoomHeight - y
-                    }
+                    // if (sy  > 0) {
+                    //     sy =  zoomHeight - y
+                    // }
                     
-                    console.log('计算 newScale---- 3', zoomWidth, zoomHeight, sx, sy);
+                    // console.log('计算 newScale---- 3', zoomWidth, zoomHeight, sx, sy);
 
                     context.translate(x, y);               // 平移
                     context.scale(newScale, newScale);           // 缩放

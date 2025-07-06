@@ -490,12 +490,12 @@ function handleMessages() {
 	// 导出
 	if (!HANLDE_MAP.includes('exprot-blob-render')) { 
 		HANLDE_MAP.push('exprot-blob-render')
-		ipcMain.handle('exprot-blob-render', async (_, {arrayBuffer, folder} ) => {
+		ipcMain.handle('exprot-blob-render', async (_, {arrayBuffer, folder, vfscale} ) => {
 			// Mp4Demux.demux(arrayBuffer)
 			const buffer = Buffer.from((arrayBuffer));  
 			const inputPath = 'av-craft.webm'
 			const outputPath = `${folder}/av-craft-${timestamp2Time(new Date().getTime())}.mp4`
-			await exportMp4(buffer, inputPath, outputPath)
+			await exportMp4(buffer, inputPath, outputPath, vfscale)
 			// 导出成功后，1s后打开文件夹
 			setTimeout(() => {
 				openFolderInExplorer(folder)
@@ -508,7 +508,7 @@ function handleMessages() {
 	}
 }
 
-function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOrFileDescriptor, outputPath: unknown) {
+function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOrFileDescriptor, outputPath: unknown, vfscale) {
  return new Promise((resolve, reject) => {
 	let webmPath = path.join(logDirectory, "/" + inputPath) 
 	fs.writeFile(webmPath , buffer, () => {
@@ -535,7 +535,9 @@ function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOr
 			.outputOptions([
 			  '-crf 18',                  // 高质量压缩
 			  '-preset slow',            // 慢速压缩提升质量
-			  '-b:a 128k'                 // 音频码率
+			  '-b:a 128k',
+			  '-pix_fmt yuv420p',                 // 音频码率
+			  '-vf eq=brightness=0.05:contrast=1.2:saturation=1.3:gamma=1.1'            // 优化 mp4 播放
 			])
 			.output(outputPath)
 			.on('end', () => {
