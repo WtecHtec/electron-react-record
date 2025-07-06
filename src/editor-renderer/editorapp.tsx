@@ -370,6 +370,9 @@ function EditorApp() {
                     chunks.push(event.data);
                 }
             };
+
+
+
 			exportCanvasSetRef.current.recorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'video/webm;codecs=h264' });
 				const blobUrl = URL.createObjectURL(blob);
