@@ -1,6 +1,6 @@
 # electron-react-record
 
-Screen Recording Tools， 尝试实现类似screen studio 应用
+Screen Recording Tools， 尝试实现low版本 screen studio 应用
 
 Screen Recording Tools
 
