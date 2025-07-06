@@ -1,5 +1,5 @@
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import icon from '../../assets/icon.svg';
+import icon from '../../assets/icon.png';
 // import './App.css';
 import DownMask from '../countdown-renderer/downmask';
 

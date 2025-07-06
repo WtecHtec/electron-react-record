@@ -96,6 +96,7 @@
     }
   },
   "dependencies": {
+    "@ant-design/icons": "^6.0.0",
     "antd": "^5.26.3",
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.8",
@@ -175,7 +176,7 @@
     "webpack-merge": "^5.9.0"
   },
   "build": {
-    "productName": "Craft Record",
+    "productName": "PointRec",
     "appId": "org.erb.ElectronReact",
     "asar": true,
     "asarUnpack": [

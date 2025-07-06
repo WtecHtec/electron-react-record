@@ -32,7 +32,7 @@ import { uIOhook, UiohookKey } from 'uiohook-napi'
 import fs from 'fs'
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
-import { createAppLoggerFile } from "./AppFile.js";
+import { createAppLoggerFile, escapeSpacesInPath } from "./AppFile.js";
 
 import { globalLogger } from './logger'
 let logDirectory = createAppLoggerFile()
@@ -277,7 +277,7 @@ function createEditorWindow() {
 	editorWin.webContents.on('did-finish-load', () => { 
 		editorWin?.webContents.send('record_url_main',  { blobUrl, mouseEventDatas, recordTimeInfo })
 		// 打开调试面板
-		// editorWin?.webContents.openDevTools()
+		editorWin?.webContents.openDevTools()
 	})
 
 	editorWin.on('closed', () => {
@@ -515,20 +515,27 @@ function exportMp4(buffer: string | NodeJS.ArrayBufferView, inputPath: fs.PathOr
 		console.log('inputPath---', webmPath)
 		globalLogger.info("inputPath:::" + webmPath )
 		ffmpeg()
-			.input(webmPath)
+			.input( webmPath)
 			// .inputOptions('-vsync 1') // 确保输入的时间戳同步
-			.videoFilters([
-				'eq=contrast=1.2:brightness=0.05:saturation=1.1:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
-			])
+			// .videoFilters([
+			// 	'eq=contrast=1.2:brightness=0.05:saturation=1.1:gamma=1.0', // 调整对比度、亮度、饱和度、伽玛
+			// ])
+			// .outputOptions([
+			// 	// '-c:v libx264', // 设置视频编解码器
+			// // 	'-c:a aac', // 设置音频编解码器
+			// 	// '-preset slow', // 设置较慢的预设以提高编码质量
+			// 	// '-crf 18', // 设置恒定质量因子，值越低质量越高（范围：0-51，默认23）
+			// 	'-movflags +faststart', // 优化 mp4 播放
+			// 	// '-pix_fmt yuv420p', // 设置像素格式
+			// 	// '-r 30',
+			// 	// '-vsync 1' // 保持输出的时间戳同步
+			// ])
+			.videoCodec('libx264')        // 视频编码
+			.audioCodec('aac')            // 音频编码
 			.outputOptions([
-				// '-c:v libx264', // 设置视频编解码器
-			// 	'-c:a aac', // 设置音频编解码器
-				// '-preset slow', // 设置较慢的预设以提高编码质量
-				// '-crf 18', // 设置恒定质量因子，值越低质量越高（范围：0-51，默认23）
-				'-movflags +faststart', // 优化 mp4 播放
-				// '-pix_fmt yuv420p', // 设置像素格式
-				// '-r 30',
-				// '-vsync 1' // 保持输出的时间戳同步
+			  '-crf 18',                  // 高质量压缩
+			  '-preset slow',            // 慢速压缩提升质量
+			  '-b:a 128k'                 // 音频码率
 			])
 			.output(outputPath)
 			.on('end', () => {

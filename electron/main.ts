@@ -44,7 +44,7 @@ if (is_mac) {
 // app.commandLine.appendSwitch('disable-features', 'IOSurfaceCapturer')
 function createWindow() {
 	win = new BrowserWindow({
-		icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+		icon: path.join(process.env.VITE_PUBLIC, 'icon-01.png'),
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.mjs'),
 		},
@@ -252,7 +252,7 @@ function createRecordWin() {
 /** 创建编辑器窗口 */
 function createEditorWindow() {
 	editorWin = new BrowserWindow({
-		icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+		icon: path.join(process.env.VITE_PUBLIC, 'icon-01.png'),
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.mjs'),
 		},

@@ -1185,10 +1185,10 @@ const VideoPlayer = (props) => {
         exprotCanvasRef.current.width = videoRef.current.videoWidth 
 		exprotCanvasRef.current.height = videoRef.current.videoHeight
         
-        // exprotCanvasRef.current.style.width = `${ videoRef.current.videoWidth * hScale}px`;
-        // exprotCanvasRef.current.style.height = `${videoRef.current.clientHeight }px`;
+        exprotCanvasRef.current.style.width = `${ videoRef.current.videoWidth * hScale}px`;
+        exprotCanvasRef.current.style.height = `${videoRef.current.clientHeight }px`;
 
-        const context  =plyrCanvasRef.current.getContext('2d')
+        const context  = plyrCanvasRef.current.getContext('2d')
 
 			if (context) { // Add null check for context
 				context.imageSmoothingEnabled = false;
@@ -1715,9 +1715,9 @@ const VideoPlayer = (props) => {
             
           
 
-			const cw = optType === 0 ? plyrCanvasRef.current.width : videoRef.current.videoWidth
+			const cw = optType === 0 ? plyrCanvasRef.current.width : plyrCanvasRef.current.width
 
-			const ch = optType === 0 ? plyrCanvasRef.current.height : videoRef.current.videoHeight
+			const ch = optType === 0 ? plyrCanvasRef.current.height : plyrCanvasRef.current.height
 
 			// context.scale(1, 1);
 
@@ -1744,7 +1744,7 @@ const VideoPlayer = (props) => {
 
 					scaleInfoRef.current.updatescale,
 
-					optType === 0 ? scaleInfoRef.current.perviewScale : scaleInfoRef.current.exportScale)
+					optType === 0 ? scaleInfoRef.current.perviewScale : scaleInfoRef.current.perviewScale)
 
 				// 检索帧
 
